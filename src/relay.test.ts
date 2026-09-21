@@ -174,3 +174,20 @@ test('at zero: one sound, red LED, "Time\'s up" acknowledged by changing slide',
   assert.equal(leds.at(-1), undefined, 'the LED stops')
   await relay.close()
 })
+
+test('an element that changes kind is cleared before being drawn again', async (t) => {
+  t.after(() => mock.timers.reset())
+  mock.timers.enable({ apis: ['setTimeout'] })
+  const { relay, calls, advance } = timed()
+
+  relay.setSlide(slide(4, 'Hooks', { activity: 'Quiz', timer: '1m' }))
+  relay.timer('toggle')
+  await settle()
+  await advance(61_000)
+  /* The gradient fill of the running timer becomes the solid fill of
+     "Time's up": the bar would keep the gradient if it were not cleared. */
+  const turn = calls.findIndex(c => c.startsWith('clear') && c.includes('fill'))
+  assert.ok(turn > 0, calls.join(' | '))
+  assert.match(calls[turn + 1], /^draw .*fill/)
+  await relay.close()
+})

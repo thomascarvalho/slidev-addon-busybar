@@ -114,6 +114,14 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
         const elements = scene.elements
         const changed = elements.filter(e => shown?.get(e.id) !== JSON.stringify(e))
         const removed = shown ? [...shown.keys()].filter(id => !elements.some(e => e.id === id)) : []
+        /* Drawing again under the same id merges fields rather than replacing
+           the element: a rectangle keeps its gradient when redrawn solid. So
+           an element that changes kind is cleared first. */
+        for (const e of changed) {
+          const before = shown?.get(e.id)
+          if (before && morphs(JSON.parse(before), e))
+            removed.push(e.id)
+        }
         /* The LED is set by a draw: draw again if only the LED changes. */
         if (scene.led !== shownLed && !changed.length && elements.length)
           changed.push(elements[0])
@@ -172,6 +180,13 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
   }
 
   return { setSlide, timer, configure, close, flush }
+}
+
+/** Whether redrawing `after` over `before` would leave some of `before`'s
+    settings behind. */
+function morphs(before: Element, after: Element): boolean {
+  const fill = (e: Element) => (e as { fill?: string }).fill
+  return before.type !== after.type || fill(before) !== fill(after)
 }
 
 function describe(error: unknown): string {

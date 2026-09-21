@@ -223,7 +223,9 @@ Tested on firmware 1.2.4 (API 27.5.0). None of it is in the official docs:
 - The native `countdown` element uses a fixed 5-pixel font, unreadable from
   the back of a room: the addon draws the time itself, once per second.
 - A `DisplayDraw` adds to the application's elements instead of replacing
-  them; an element drawn again under the same `id` is replaced.
+  them. An element drawn again under the same `id` is updated, not replaced:
+  some fields survive, such as a rectangle's gradient when redrawn solid. The
+  relay clears an element first when its type or fill changes.
 - A rectangle without an explicit `z_index` placed after a text element is
   drawn over rectangles with a higher `z_index`.
 - Firmware images and animations are addressed as
