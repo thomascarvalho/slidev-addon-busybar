@@ -253,6 +253,60 @@ npm run preview -- /tmp/screens   # draws every state on a real bar and saves sc
 `.env.local` at the root of the repository: `cp .env.example .env.local`, then
 fill it in.
 
+## Roadmap
+
+Ideas, roughly by value for someone in front of a room. Effort: S (hours),
+M (a day or two), L (more, or unknowns to clear first). Contributions welcome.
+
+### In the room
+
+- [ ] **Counting breaks** (S): the break screen counts down to `until`, then
+  plays a sound and shows "Back!" at the resume time.
+- [ ] **Countdown before the start** (S): `until` on the welcome screen shows
+  "Starts in 12 min" while people settle in. Same mechanism as breaks.
+- [ ] **Reactions** (S): a shortcut shows animated hearts or sparkles for a few
+  seconds, for a good answer. The firmware images are already there.
+- [ ] **Custom end sounds** (S): upload a `.wav` from the deck to the bar
+  (`AssetsUpload`) instead of the firmware one.
+
+### For the speaker
+
+- [ ] **Presenter dashboard on the back screen** (M): the bar has a 160×80
+  screen facing the speaker, addressable separately (`display: 'back'`). Clock,
+  next chapter, slide n/total, the workshop timer even while the front shows
+  something else.
+- [ ] **Ahead/behind schedule** (M): `busy.at: "10:30"` on chapters, "+5 min"
+  in red or "−3 min" in green, on the back screen so the room does not see it.
+- [ ] **Phone remote** (M): a `/__busy/remote` page on the local network to
+  start/pause/extend the timer and force a screen, for remotes without a
+  "blank screen" button.
+- [ ] **Bar buttons** (L): run the timer from the bar's own buttons. Presses
+  arrive on the `/api/status/ws` WebSocket as protobuf, which `busy-lib` only
+  decodes in the browser; the relay would decode them itself. To check first:
+  `START` begins a BUSY session that takes the screen over.
+
+### Configuration
+
+- [ ] **Configurable shortcuts** (S): keys in `busybar.config.ts`.
+- [ ] **More locales** (S): German, Spanish… a `locales/` file each.
+- [ ] **Logos from an image** (M): turn a small PNG into `pixels()` at load
+  time, instead of drawing the grid by hand.
+
+### Robustness and tooling
+
+- [ ] **Verify USB** (S): only Wi-Fi was tested on hardware; USB is expected to
+  answer on `10.0.4.20` without an access code.
+- [ ] **Shortcut cache** (S): when the addon is added to a deck already opened
+  in the browser, Slidev's cached shortcut module hides ours until site data is
+  cleared. Detect it and warn, or register the keys another way.
+- [ ] **Integration tests against an emulator** (M): run
+  [busybar-emulator](https://github.com/maxswinkels/busybar-emulator) in CI and
+  check what the relay draws.
+- [ ] **Firmware compatibility** (S): record the firmware and API versions each
+  release was tested on (1.2.4 / API 27.5.0 so far).
+- [ ] **Release workflow** (S): tag → publish to npm with provenance from CI.
+- [ ] **Demo GIF** (S): a short recording of the bar following a deck.
+
 ## License
 
 [MIT](LICENSE)
