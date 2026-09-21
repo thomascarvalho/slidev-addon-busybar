@@ -56,8 +56,10 @@ addons:
    - over **Wi-Fi**: you need its IP address (shown in the BUSY app) and its
      HTTP access code (the bar's "HTTP Access" setting, in key mode). A token
      from the BUSY cloud will not work here.
-3. **Create `.env.local`** next to your deck and **git-ignore it**. It stays on
-   your machine and is never sent to the browser:
+3. **Create `.env.local`** next to your deck (start from
+   [`.env.example`](.env.example)) and **git-ignore it**. It stays on your
+   machine and is never sent to the browser. The addon reads it from the folder
+   you run `slidev` in and from the deck's folder; shell variables win:
 
    ```bash
    BUSYBAR_ADDR=192.168.1.42    # default: 10.0.4.20 (USB)
@@ -248,7 +250,8 @@ npm run preview -- /tmp/screens   # draws every state on a real bar and saves sc
 ```
 
 `npm run dev` and `npm run preview` read the bar's address and code from
-`.env.local` at the root of the repository.
+`.env.local` at the root of the repository: `cp .env.example .env.local`, then
+fill it in.
 
 ## License
 
