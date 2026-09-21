@@ -1,0 +1,60 @@
+{
+  "name": "slidev-addon-busybar",
+  "version": "0.1.0",
+  "description": "Drive a BUSY Bar from your Slidev deck: current chapter and progress, workshop timers, break and Q&A screens.",
+  "keywords": [
+    "slidev-addon",
+    "slidev",
+    "busy-bar",
+    "busybar",
+    "presentation",
+    "timer"
+  ],
+  "license": "MIT",
+  "author": "Thomas Carvalho",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thomascarvalho/slidev-addon-busybar.git"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "!src/**/*.test.ts",
+    "!src/preview.ts",
+    "global-bottom.vue",
+    "setup",
+    "vite.config.ts"
+  ],
+  "engines": {
+    "node": ">=20.12",
+    "slidev": ">=52.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "node --test \"src/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "dev": "npm run build && slidev example/slides.md",
+    "preview": "node --env-file=.env.local src/preview.ts",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "@busy-app/busy-lib": "^0.21.1"
+  },
+  "peerDependencies": {
+    "@slidev/cli": ">=52.0.0"
+  },
+  "devDependencies": {
+    "@slidev/cli": "^53.0.0",
+    "@slidev/theme-default": "^0.25.0",
+    "@types/node": "^24.13.6",
+    "typescript": "~5.9.3"
+  }
+}

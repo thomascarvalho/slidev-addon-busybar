@@ -1,0 +1,6 @@
+/* Public API, for `busybar.config.ts`. */
+export type { BusybarConfig, Labels, Locale, ScreenStyle } from './config.ts'
+export { defineConfig } from './config.ts'
+export type { DeviceFont } from './draw.ts'
+export { label, pixels, rect, SCREEN, textWidth } from './draw.ts'
+export type { Element } from './types.ts'
