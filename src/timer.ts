@@ -14,7 +14,7 @@ export interface Timer {
   rang: boolean
 }
 
-export type Phase = 'running' | 'paused' | 'finished'
+export type Status = 'running' | 'paused' | 'finished'
 
 export type TimerAction = 'toggle' | 'cancel' | 'add'
 
@@ -24,7 +24,7 @@ export function remaining(timer: Timer, now: number): number {
   return timer.endsAt === null ? timer.leftMs : timer.endsAt - now
 }
 
-export function phase(timer: Timer, now: number): Phase {
+export function status(timer: Timer, now: number): Status {
   if (remaining(timer, now) <= 0)
     return 'finished'
   return timer.endsAt === null ? 'paused' : 'running'
@@ -61,7 +61,7 @@ export function act(timer: Timer | null, action: TimerAction, slide: SlideInfo |
       : { ...timer, totalMs: timer.totalMs + MINUTE, endsAt: now + base + MINUTE, rang: false }
   }
 
-  switch (phase(timer, now)) {
+  switch (status(timer, now)) {
     case 'finished': return null
     case 'running': return { ...timer, endsAt: null, leftMs: left }
     case 'paused': return { ...timer, endsAt: now + left }

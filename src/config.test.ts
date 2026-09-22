@@ -4,7 +4,7 @@ import { resolveConfig, toBarColor } from './config.ts'
 
 test('English by default, French on request', () => {
   assert.equal(resolveConfig().labels.timeUp, 'Time\'s up')
-  assert.equal(resolveConfig().screens.pause.title, 'Break')
+  assert.equal(resolveConfig().screens.break.title, 'Break')
   const fr = resolveConfig({ locale: 'fr' })
   assert.equal(fr.labels.timeUp, 'Temps écoulé')
   assert.equal(fr.screens.questions.title, 'Questions ?')
@@ -13,11 +13,11 @@ test('English by default, French on request', () => {
 test('labels and screens can be overridden, new screens added', () => {
   const config = resolveConfig({
     labels: { timeUp: 'Stop!' },
-    screens: { pause: { title: 'Lunch' }, demo: { title: 'Live demo', color: '#0f0', icon: 'dt_work' } },
+    screens: { break: { title: 'Lunch' }, demo: { title: 'Live demo', color: '#0f0', icon: 'dt_work' } },
   })
   assert.equal(config.labels.timeUp, 'Stop!')
-  assert.equal(config.screens.pause.title, 'Lunch')
-  assert.equal(config.screens.pause.icon, 'dt_coffee', 'the rest of the default is kept')
+  assert.equal(config.screens.break.title, 'Lunch')
+  assert.equal(config.screens.break.icon, 'dt_coffee', 'the rest of the default is kept')
   assert.deepEqual(config.screens.demo, { title: 'Live demo', color: '#00FF00FF', icon: 'dt_work' })
 })
 

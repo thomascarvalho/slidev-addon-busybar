@@ -120,14 +120,14 @@ status LED. Changing slide or pressing `b` dismisses it.
 ![Paused](docs/screens/timer-paused.png)
 ![Time's up](docs/screens/time-up.png)
 
-**A special screen**: `pause`, `questions` or `welcome`, each with its icon and
+**A special screen**: `break`, `questions` or `welcome`, each with its icon and
 colour, or the name of one of your [logos](#logos). `until` adds the resume
 time, `text` replaces the title; any other name is shown as is.
 
 ```yaml
 ---
 busy:
-  screen: pause
+  screen: break
   until: "10:45"
 ---
 ```
@@ -157,7 +157,7 @@ With the switch on APPS, the bar itself drives the deck. By default:
 
 | On the bar | Effect |
 |---|---|
-| Wheel | next or previous step (click or slide), one per notch |
+| Wheel | next or previous click or slide, one per notch |
 | Start/Stop | start the slide's activity, pause, resume; dismiss "Time's up" |
 | Start/Stop, held | one more minute |
 | Back, held | cancel the timer |
@@ -174,9 +174,9 @@ bar:
 ```ts
 export default defineConfig({
   controls: {
-    wheel: 'clicks',        // 'clicks', 'slides' (skips the clicks) or false
-    start: 'timer',         // Start/Stop
-    startHold: 'timer:add', // Start/Stop, held
+    wheel: 'clicks',         // 'clicks', 'slides' (skips the clicks) or false
+    start: 'timer:toggle',   // Start/Stop
+    startHold: 'timer:add',  // Start/Stop, held
     back: false,
     backHold: 'timer:cancel',
     ok: false,              // the wheel's click
@@ -194,7 +194,7 @@ export default defineConfig({
 | `goto:<n>` | slide `n`, say the day's programme |
 | `overview` | open or close the slides overview |
 | `dark` | toggle dark mode |
-| `timer`, `timer:add`, `timer:cancel` | as `b`, `+` and `Shift` + `x` |
+| `timer:toggle`, `timer:add`, `timer:cancel` | as `b`, `+` and `Shift` + `x` |
 | `false` | nothing |
 
 A button with no action when held just does its press action, whenever it is
@@ -214,7 +214,7 @@ export default defineConfig({
   controls: { ok: 'overview' }, // the bar's controls, see "From the bar"
   chapterColors: ['#D3A5AA', '#7BBADD', '#B25043'],
   screens: {
-    pause: { title: 'Déjeuner' },
+    break: { title: 'Déjeuner' },
     demo: { title: 'Démo live', color: '#7DDB8B', icon: 'dt_work' },
   },
 })

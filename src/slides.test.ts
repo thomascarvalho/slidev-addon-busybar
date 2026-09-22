@@ -41,13 +41,13 @@ test('a special screen closes the current chapter', () => {
   const withBreak = [
     { chapter: 'Hooks' },
     undefined,
-    { screen: 'pause', until: '10:45' },
+    { screen: 'break', until: '10:45' },
     undefined, // section slide after the break
     { chapter: 'Effects' },
   ]
   assert.deepEqual(slideInfo(withBreak, 1).progress, { index: 2, count: 2 })
   assert.equal(slideInfo(withBreak, 2).chapter, null)
-  assert.equal(slideInfo(withBreak, 2).screen, 'pause')
+  assert.equal(slideInfo(withBreak, 2).screen, 'break')
   assert.equal(slideInfo(withBreak, 3).chapter, null)
   assert.equal(slideInfo(withBreak, 4).chapter, 'Effects')
 })

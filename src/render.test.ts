@@ -111,12 +111,12 @@ test('time\'s up: localised message, blinking red, red LED', () => {
 })
 
 test('special screens: icon, colour, free text and resume time', () => {
-  const pause = screen({ screen: 'pause', until: '10:45' })
-  assert.match(String(byId(pause, 'icon')!.stock_path), /dt_coffee/)
-  assert.equal(byId(pause, 'label')!.text, 'Break')
-  assert.equal(byId(pause, 'value')!.text, '10:45')
-  assert.ok(Number(byId(pause, 'label')!.x) > 16)
-  assert.equal(byId(pause, 'fill')!.width, 72)
+  const brk = screen({ screen: 'break', until: '10:45' })
+  assert.match(String(byId(brk, 'icon')!.stock_path), /dt_coffee/)
+  assert.equal(byId(brk, 'label')!.text, 'Break')
+  assert.equal(byId(brk, 'value')!.text, '10:45')
+  assert.ok(Number(byId(brk, 'label')!.x) > 16)
+  assert.equal(byId(brk, 'fill')!.width, 72)
 
   assert.equal(byId(screen({ screen: 'welcome', text: 'Vue training' }), 'title')!.text, 'Vue training')
   const unknown = screen({ screen: 'debrief' })
@@ -125,12 +125,12 @@ test('special screens: icon, colour, free text and resume time', () => {
 })
 
 test('a screen wins over a running timer, not over its end', () => {
-  const pause = slide({ screen: 'pause' })
-  const hidden = render({ slide: pause, timer: running(5 * MIN, 0) }, 0)
+  const brk = slide({ screen: 'break' })
+  const hidden = render({ slide: brk, timer: running(5 * MIN, 0) }, 0)
   assert.equal(byId(hidden.elements, 'title')!.text, 'Break')
   assert.equal(hidden.nextAt, 5 * MIN, 'render scheduled at the end of the timer')
 
-  const done = render({ slide: pause, timer: running(5 * MIN, 0) }, 5 * MIN)
+  const done = render({ slide: brk, timer: running(5 * MIN, 0) }, 5 * MIN)
   assert.equal(byId(done.elements, 'title')!.text, 'Time\'s up')
 })
 

@@ -32,7 +32,7 @@ const states: Record<string, RenderState> = {
   'chapter': { slide: slide({}), timer: null },
   'chapter-accents': { slide: slide({ chapter: 'Réseau & sécurité', chapterNo: 2 }), timer: null },
   'section': { slide: slide({ chapter: null, progress: null, title: 'Part 1' }), timer: null },
-  'break': { slide: slide({ screen: 'pause', until: '10:45' }), timer: null },
+  'break': { slide: slide({ screen: 'break', until: '10:45' }), timer: null },
   'welcome': { slide: slide({ screen: 'welcome' }), timer: null },
   'questions': { slide: slide({ screen: 'questions' }), timer: null },
   'logo': { slide: slide({ screen: 'box' }), timer: null },

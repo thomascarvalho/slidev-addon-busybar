@@ -12,7 +12,7 @@ import type { TimerAction } from './timer.ts'
 import type { Element, SlideInfo } from './types.ts'
 import { resolveConfig } from './config.ts'
 import { render } from './render.ts'
-import { act, phase } from './timer.ts'
+import { act, status } from './timer.ts'
 
 export const APPLICATION = 'slidev'
 const PRIORITY = 50
@@ -71,7 +71,7 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
     state.slide = slide
     /* Changing slide acknowledges a finished timer; a running one carries on
        whatever the slide. */
-    if (state.timer && phase(state.timer, now()) === 'finished')
+    if (state.timer && status(state.timer, now()) === 'finished')
       state.timer = null
     void flush()
   }
@@ -99,7 +99,7 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
   /** Plays the end sound once per timer, without waiting for the bar. */
   function ring() {
     const t = state.timer
-    if (!t || t.rang || phase(t, now()) !== 'finished')
+    if (!t || t.rang || status(t, now()) !== 'finished')
       return
     state.timer = { ...t, rang: true }
     if (sound) {

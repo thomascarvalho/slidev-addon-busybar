@@ -23,7 +23,7 @@ export type Locale = 'en' | 'fr'
 /** Played in the browser window that the bar drives. */
 export type SlidevAction = 'next' | 'prev' | 'nextSlide' | 'prevSlide' | 'first' | 'last' | 'overview' | 'dark' | `goto:${number}`
 /** Played by the dev server. */
-export type TimerControl = 'timer' | 'timer:add' | 'timer:cancel'
+export type TimerControl = 'timer:toggle' | 'timer:add' | 'timer:cancel'
 /** What a button of the bar does; `false` for nothing. */
 export type ControlAction = SlidevAction | TimerControl | false
 
@@ -49,7 +49,7 @@ export interface BusybarConfig {
   labels?: Partial<Labels>
   /** Progress bar colours, one chapter after the other. */
   chapterColors?: string[]
-  /** `busy.screen` screens, merged with `pause`, `questions` and `welcome`. */
+  /** `busy.screen` screens, merged with `break`, `questions` and `welcome`. */
   screens?: Record<string, Partial<ScreenStyle>>
   /** Logos shown by `busy.screen: <name>`. Each returns `DisplayDraw`
       elements for the 72×16 screen; see `pixels` and `rect`. */
@@ -73,20 +73,20 @@ export function defineConfig(config: BusybarConfig): BusybarConfig {
   return config
 }
 
-const LOCALES: Record<Locale, { labels: Labels, screens: Record<'pause' | 'questions' | 'welcome', string> }> = {
+const LOCALES: Record<Locale, { labels: Labels, screens: Record<'break' | 'questions' | 'welcome', string> }> = {
   en: {
     labels: { timeUp: 'Time\'s up', timer: 'Timer' },
-    screens: { pause: 'Break', questions: 'Questions?', welcome: 'Welcome!' },
+    screens: { break: 'Break', questions: 'Questions?', welcome: 'Welcome!' },
   },
   fr: {
     labels: { timeUp: 'Temps écoulé', timer: 'Chrono' },
-    screens: { pause: 'Pause', questions: 'Questions ?', welcome: 'Bienvenue !' },
+    screens: { break: 'Pause', questions: 'Questions ?', welcome: 'Bienvenue !' },
   },
 }
 
 export const DEFAULT_CONTROLS: Controls = {
   wheel: 'clicks',
-  start: 'timer',
+  start: 'timer:toggle',
   startHold: 'timer:add',
   back: false,
   backHold: 'timer:cancel',
@@ -95,7 +95,7 @@ export const DEFAULT_CONTROLS: Controls = {
   switch: true,
 }
 
-const ACTIONS = new Set(['next', 'prev', 'nextSlide', 'prevSlide', 'first', 'last', 'overview', 'dark', 'timer', 'timer:add', 'timer:cancel'])
+const ACTIONS = new Set(['next', 'prev', 'nextSlide', 'prevSlide', 'first', 'last', 'overview', 'dark', 'timer:toggle', 'timer:add', 'timer:cancel'])
 
 export function isControlAction(value: unknown): value is ControlAction {
   return value === false || (typeof value === 'string' && (ACTIONS.has(value) || /^goto:[1-9]\d*$/.test(value)))
@@ -135,7 +135,7 @@ export function resolveConfig(config: BusybarConfig = {}): ResolvedConfig {
     throw new Error(`[busybar] unknown locale "${config.locale}" (en or fr)`)
 
   const defaults: Record<string, ScreenStyle> = {
-    pause: { title: locale.screens.pause, color: '#FFB454', icon: 'dt_coffee' },
+    break: { title: locale.screens.break, color: '#FFB454', icon: 'dt_coffee' },
     questions: { title: locale.screens.questions, color: '#6CB4FF', icon: 'dt_dialog' },
     welcome: { title: locale.screens.welcome, color: '#FF8FB1', icon: 'dt_sparkls_1' },
   }

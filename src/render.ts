@@ -11,7 +11,7 @@ import { resolveConfig } from './config.ts'
 import { SCREEN, textWidth } from './draw.ts'
 import { formatClock } from './duration.ts'
 import { toDeviceText } from './text.ts'
-import { armed, phase, remaining } from './timer.ts'
+import { armed, remaining, status } from './timer.ts'
 
 export interface Scene {
   elements: Element[]
@@ -130,7 +130,7 @@ function timerLayout(label: string, value: string, color: string, labelColor: st
 function renderTimer(timer: Timer, now: number, config: ResolvedConfig): Scene {
   const left = remaining(timer, now)
   const widest = formatClock(timer.totalMs)
-  switch (phase(timer, now)) {
+  switch (status(timer, now)) {
     case 'running': {
       const ratio = left / timer.totalMs
       return {
@@ -183,7 +183,7 @@ function renderScreen(slide: SlideInfo, screen: string, config: ResolvedConfig):
 export function render(state: RenderState, now: number, config: ResolvedConfig = resolveConfig()): Scene {
   const slide = state.slide
   const timer = state.timer
-  if (timer && phase(timer, now) === 'finished')
+  if (timer && status(timer, now) === 'finished')
     return renderTimer(timer, now, config)
   if (slide?.screen) {
     /* A timer running behind the screen must take over when it ends. */

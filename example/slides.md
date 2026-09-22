@@ -61,7 +61,7 @@ cancel.
 
 ---
 busy:
-  screen: pause
+  screen: break
   until: "10:45"
 ---
 
