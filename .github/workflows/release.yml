@@ -1,0 +1,65 @@
+name: Release
+
+# `npm version <patch|minor|major>` then `git push --follow-tags`: a `v*` tag
+# is checked, tested, published to npm and released on GitHub with its
+# CHANGELOG.md section. npm trusts this workflow (trusted publishing, OIDC):
+# no token to store, and every version gets a provenance attestation.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Tag matches package.json
+        run: |
+          expected="v$(node -p "require('./package.json').version")"
+          if [ "$GITHUB_REF_NAME" != "$expected" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json ($expected)"
+            exit 1
+          fi
+      - name: CHANGELOG.md has a section for this version
+        run: |
+          if ! grep -q "^## ${GITHUB_REF_NAME#v} " CHANGELOG.md; then
+            echo "::error::No '## ${GITHUB_REF_NAME#v} …' section in CHANGELOG.md"
+            exit 1
+          fi
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # the GitHub release
+      id-token: write # npm trusted publishing
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      # Trusted publishing needs npm 11.5.1 or later.
+      - run: npm install -g npm@latest
+      - run: npm ci
+      # `prepack` builds dist/.
+      - run: npm publish --access public
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          awk -v v="${GITHUB_REF_NAME#v}" '/^## /{ if (found) exit; if ($2 == v) { found = 1; next } } found' CHANGELOG.md > notes.md
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md

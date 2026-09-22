@@ -422,14 +422,34 @@ npm run preview -- /tmp/screens   # draws every state on a real bar and saves sc
 `.env.local` at the root of the repository: `cp .env.example .env.local`, then
 fill it in.
 
+### Release
+
+Write the version's section in [`CHANGELOG.md`](CHANGELOG.md)
+(`## 0.4.0 — <date>`), commit, then:
+
+```bash
+npm version minor          # or patch / major: bumps, commits and tags
+git push --follow-tags
+```
+
+The `Release` workflow checks that the tag matches `package.json` and that
+the changelog has its section, runs the tests, publishes to npm with a
+provenance attestation (trusted publishing: no npm token) and creates the
+GitHub release from the changelog section.
+
 ## Roadmap
 
 - [x] Drive the deck from the bar's wheel and buttons, configurable
 - [x] Breaks that count down and call people back
 - [x] Workshop timers in phases (read, code, share)
 - [x] Configurable sounds, with your own WAV files
+- [x] Release workflow: tag, test, publish with provenance
+- [ ] Ad-hoc timer set with the wheel, no slide needed
+- [ ] Show-of-hands vote counted with the wheel, results as bars
+- [ ] The day's programme: ahead/behind, "Next: Lunch at 12:30", end-of-day
+  report
+- [ ] Participant roulette spun with the wheel
 - [ ] Audience phone page: "done" / "need help" counts in workshops, reactions
-- [ ] Ahead/behind the day's programme, discreetly
 - [ ] Bar reacts to Slidev clicks (`busy.clicks`)
 - [ ] Animated chapter transitions
 - [ ] Countdown before the start, finale on the last slide
@@ -437,7 +457,7 @@ fill it in.
 - [ ] Configurable keyboard shortcuts, more locales
 - [ ] Logos from a PNG
 - [ ] Verify USB on hardware
-- [ ] Integration tests against the emulator, release workflow
+- [ ] Integration tests against the emulator
 
 ## License
 
