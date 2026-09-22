@@ -74,8 +74,8 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
       return
     lastSlide = key
     state.slide = slide
-    /* Changing slide acknowledges a finished timer; a running one carries on
-       whatever the slide. */
+    /* Changing slide acknowledges a finished timer; a running or waiting one
+       carries on whatever the slide. */
     if (state.timer && status(state.timer, now()) === 'finished')
       state.timer = null
     void flush()
@@ -101,7 +101,7 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
     void flush()
   }
 
-  /** Plays a break's warning once, then the end sound once per timer,
+  /** Plays a break's warning once, then the end sound once per phase,
       without waiting for the bar. */
   function ring() {
     const t = state.timer
@@ -113,7 +113,7 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
       play(warnSound)
     }
     const current = state.timer!
-    if (current.rang || s !== 'finished')
+    if (current.rang || (s !== 'finished' && s !== 'waiting'))
       return
     state.timer = { ...current, rang: true }
     play(sound)

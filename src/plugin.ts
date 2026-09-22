@@ -201,7 +201,7 @@ export function busybar(): Plugin {
 }
 
 function isTimerAction(value: unknown): value is TimerAction {
-  return value === 'toggle' || value === 'cancel' || value === 'add'
+  return value === 'toggle' || value === 'add' || value === 'skip' || value === 'cancel'
 }
 
 function reply(res: ServerResponse, status: number) {
@@ -225,10 +225,17 @@ async function readJson(req: IncomingMessage): Promise<Record<string, unknown> |
   }
 }
 
+const MAX_PHASES = 10
+
 function str(value: unknown): string | null {
   if (typeof value === 'number')
     return String(value)
   return typeof value === 'string' && value.trim() ? value.trim().slice(0, 200) : null
+}
+
+function strs(value: unknown): string[] | null {
+  const list = (Array.isArray(value) ? value : [value]).map(str).filter((s): s is string => s !== null).slice(0, MAX_PHASES)
+  return list.length ? list : null
 }
 
 function int(value: unknown): number | null {
@@ -249,7 +256,7 @@ export function parseSlide(body: Record<string, unknown>): SlideInfo | null {
     chapterNo: int(body.chapterNo) || null,
     progress: index && count && index <= count ? { index, count } : null,
     activity: str(body.activity),
-    timer: str(body.timer),
+    timer: strs(body.timer),
     screen: str(body.screen),
     until: str(body.until),
     text: str(body.text),

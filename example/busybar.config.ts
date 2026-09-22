@@ -15,11 +15,11 @@ const HEART = [
 export default defineConfig({
   locale: 'en',
   /* The wheel steps through the deck and Start/Stop runs the timer (the
-     defaults); clicking the wheel opens the overview, holding it goes back
-     to the first chapter (slide 3). */
+     defaults); clicking the wheel skips to the next workshop phase, holding
+     it opens the overview. */
   controls: {
-    ok: 'overview',
-    okHold: 'goto:3',
+    ok: 'timer:skip',
+    okHold: 'overview',
   },
   logos: {
     acme() {

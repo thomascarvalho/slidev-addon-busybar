@@ -18,6 +18,10 @@ export interface Labels {
   breakOver: string
   /** Name of a timer whose slide has no `busy.activity`. */
   timer: string
+  /** Name of an unnamed workshop phase, followed by its number. */
+  phase: string
+  /** Before the name of the next phase of a workshop. */
+  upNext: string
 }
 
 export type Locale = 'en' | 'fr'
@@ -25,7 +29,7 @@ export type Locale = 'en' | 'fr'
 /** Played in the browser window that the bar drives. */
 export type SlidevAction = 'next' | 'prev' | 'nextSlide' | 'prevSlide' | 'first' | 'last' | 'overview' | 'dark' | `goto:${number}`
 /** Played by the dev server. */
-export type TimerControl = 'timer:toggle' | 'timer:add' | 'timer:cancel'
+export type TimerControl = 'timer:toggle' | 'timer:add' | 'timer:skip' | 'timer:cancel'
 /** What a button of the bar does; `false` for nothing. */
 export type ControlAction = SlidevAction | TimerControl | false
 
@@ -77,11 +81,11 @@ export function defineConfig(config: BusybarConfig): BusybarConfig {
 
 const LOCALES: Record<Locale, { labels: Labels, screens: Record<'break' | 'questions' | 'welcome', string> }> = {
   en: {
-    labels: { timeUp: 'Time\'s up', breakOver: 'Break\'s over!', timer: 'Timer' },
+    labels: { timeUp: 'Time\'s up', breakOver: 'Break\'s over!', timer: 'Timer', phase: 'Phase', upNext: 'Next' },
     screens: { break: 'Break', questions: 'Questions?', welcome: 'Welcome!' },
   },
   fr: {
-    labels: { timeUp: 'Temps écoulé', breakOver: 'On reprend !', timer: 'Chrono' },
+    labels: { timeUp: 'Temps écoulé', breakOver: 'On reprend !', timer: 'Chrono', phase: 'Phase', upNext: 'Suivant' },
     screens: { break: 'Pause', questions: 'Questions ?', welcome: 'Bienvenue !' },
   },
 }
@@ -97,7 +101,7 @@ export const DEFAULT_CONTROLS: Controls = {
   switch: true,
 }
 
-const ACTIONS = new Set(['next', 'prev', 'nextSlide', 'prevSlide', 'first', 'last', 'overview', 'dark', 'timer:toggle', 'timer:add', 'timer:cancel'])
+const ACTIONS = new Set(['next', 'prev', 'nextSlide', 'prevSlide', 'first', 'last', 'overview', 'dark', 'timer:toggle', 'timer:add', 'timer:skip', 'timer:cancel'])
 
 export function isControlAction(value: unknown): value is ControlAction {
   return value === false || (typeof value === 'string' && (ACTIONS.has(value) || /^goto:[1-9]\d*$/.test(value)))

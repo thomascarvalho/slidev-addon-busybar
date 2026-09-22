@@ -17,3 +17,33 @@ export function formatClock(ms: number): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`
 }
+
+/** One part of a workshop timer. */
+export interface Phase {
+  /** `null` when unnamed: shown as "Phase 2". */
+  label: string | null
+  ms: number
+}
+
+/** `['5m Reading', '10m Coding']` or `'15m'` → phases; `null` if one of them
+    is unreadable. The duration may contain spaces (`1h 30m Lab`): the
+    longest readable start wins. */
+export function parsePhases(value: string | readonly string[]): Phase[] | null {
+  const entries = typeof value === 'string' ? [value] : value
+  if (!entries.length)
+    return null
+  const phases: Phase[] = []
+  for (const entry of entries) {
+    const words = entry.trim().split(/\s+/)
+    let phase: Phase | null = null
+    for (let n = words.length; n > 0 && !phase; n--) {
+      const ms = parseDuration(words.slice(0, n).join(' '))
+      if (ms)
+        phase = { label: words.slice(n).join(' ') || null, ms }
+    }
+    if (!phase)
+      return null
+    phases.push(phase)
+  }
+  return phases
+}

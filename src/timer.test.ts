@@ -2,12 +2,12 @@ import type { SlideInfo } from './types.ts'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { resolveConfig } from './config.ts'
-import { act, remaining, status } from './timer.ts'
+import { act, phaseName, remaining, status } from './timer.ts'
 
 const MIN = 60_000
 
 function slide(extra: Partial<SlideInfo> = {}): SlideInfo {
-  return { no: 4, title: null, chapter: 'Hooks', chapterNo: 1, progress: null, activity: 'Workshop 1', timer: '15m', screen: null, until: null, text: null, ...extra }
+  return { no: 4, title: null, chapter: 'Hooks', chapterNo: 1, progress: null, activity: 'Workshop 1', timer: ['15m'], screen: null, until: null, text: null, ...extra }
 }
 
 const names = resolveConfig()
@@ -23,7 +23,7 @@ test('starts the slide\'s activity, only when asked', () => {
 
 test('nothing to start without a timer on the slide', () => {
   assert.equal(run(null, 'toggle', slide({ timer: null }), 0), null)
-  assert.equal(run(null, 'toggle', slide({ timer: 'soon' }), 0), null)
+  assert.equal(run(null, 'toggle', slide({ timer: ['soon'] }), 0), null)
   assert.equal(run(null, 'add', slide(), 0), null)
 })
 
@@ -75,4 +75,60 @@ test('one more minute re-arms the break warning only above a minute', () => {
   const t = { ...run(null, 'toggle', slide({ screen: 'break' }), 0)!, warned: true }
   assert.equal(run(t, 'add', null, 14 * MIN)!.warned, false, '2 min left: warn again later')
   assert.equal(run(t, 'add', null, 15 * MIN)!.warned, true, 'at zero: 1 min left, no warning right away')
+})
+
+const lab = slide({ activity: 'Lab', timer: ['5m Reading', '10m Coding', '5m'] })
+
+test('a phase over waits for the trainer, the last one finishes', () => {
+  let t = run(null, 'toggle', lab, 0)!
+  assert.equal(t.index, 0)
+  assert.equal(status(t, 5 * MIN), 'waiting')
+  t = run(t, 'toggle', null, 6 * MIN)!
+  assert.equal(t.index, 1)
+  assert.equal(status(t, 6 * MIN), 'running')
+  assert.equal(remaining(t, 7 * MIN), 9 * MIN)
+  t = run(t, 'toggle', null, 16 * MIN)!
+  assert.equal(t.index, 2)
+  assert.equal(status(t, 21 * MIN), 'finished')
+})
+
+test('skip ends a phase now, then starts the next one', () => {
+  let t = run(null, 'toggle', lab, 0)!
+  t = run(t, 'skip', null, MIN)!
+  assert.equal(status(t, MIN), 'waiting')
+  assert.equal(t.endsAt, MIN, 'waiting since now')
+  t = run(t, 'skip', null, 2 * MIN)!
+  assert.equal(t.index, 1)
+  assert.equal(status(t, 2 * MIN), 'running')
+  t = run(t, 'skip', null, 3 * MIN)!
+  t = run(t, 'toggle', null, 3 * MIN)!
+  t = run(t, 'skip', null, 4 * MIN)!
+  assert.equal(status(t, 4 * MIN), 'finished', 'skipping the last phase finishes')
+  assert.deepEqual(run(t, 'skip', null, 5 * MIN), t, 'nothing left to skip')
+})
+
+test('skip while paused also ends the phase', () => {
+  let t = run(null, 'toggle', lab, 0)!
+  t = run(t, 'toggle', null, MIN)!
+  t = run(t, 'skip', null, 2 * MIN)!
+  assert.equal(status(t, 2 * MIN), 'waiting')
+})
+
+test('one more minute while waiting reopens the phase that ended', () => {
+  let t = run(null, 'toggle', lab, 0)!
+  t = run(t, 'add', null, 6 * MIN)!
+  assert.equal(t.index, 0)
+  assert.equal(status(t, 6 * MIN), 'running')
+  assert.equal(remaining(t, 6 * MIN), MIN)
+})
+
+test('phases are named, or numbered', () => {
+  const t = run(null, 'toggle', lab, 0)!
+  assert.equal(phaseName(t, 0, names.labels), 'Reading')
+  assert.equal(phaseName(t, 2, names.labels), 'Phase 3')
+})
+
+test('a break keeps its first phase only', () => {
+  const t = run(null, 'toggle', slide({ screen: 'break', timer: ['15m', '5m'] }), 0)!
+  assert.equal(t.phases.length, 1)
 })

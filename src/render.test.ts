@@ -13,7 +13,7 @@ function slide(extra: Partial<SlideInfo>): SlideInfo {
 }
 
 function running(leftMs: number, now = 0): Timer {
-  return { label: 'Workshop 1', style: null, totalMs: 15 * MIN, endsAt: now + leftMs, leftMs: 0, rang: false, warned: false }
+  return { label: 'Workshop 1', style: null, phases: [{ label: null, ms: 15 * MIN }], index: 0, totalMs: 15 * MIN, endsAt: now + leftMs, leftMs: 0, rang: false, warned: false }
 }
 
 const byId = (elements: { id: string }[], id: string) => elements.find(e => e.id === id) as Record<string, unknown> | undefined
@@ -55,7 +55,7 @@ test('progress fills the last row, in the chapter\'s colour', () => {
 })
 
 test('an activity to start shows its name and length, without counting', () => {
-  const scene = render({ slide: slide({ chapter: 'Hooks', activity: 'Workshop 1', timer: '15m' }), timer: null }, 0)
+  const scene = render({ slide: slide({ chapter: 'Hooks', activity: 'Workshop 1', timer: ['15m'] }), timer: null }, 0)
   assert.equal(byId(scene.elements, 'label')!.text, 'Workshop 1')
   assert.equal(byId(scene.elements, 'value')!.text, '15:00')
   assert.equal(byId(scene.elements, 'fill'), undefined)
@@ -137,7 +137,7 @@ test('a screen wins over a running timer, not over its end', () => {
 const brk = (extra: Partial<Timer> = {}): Timer => ({ ...running(10 * MIN), label: 'Break', style: 'break', ...extra })
 
 test('a break to start: icon, name, length in white, empty row', () => {
-  const scene = render({ slide: slide({ screen: 'break', timer: '15m' }), timer: null }, 0)
+  const scene = render({ slide: slide({ screen: 'break', timer: ['15m'] }), timer: null }, 0)
   assert.match(String(byId(scene.elements, 'icon')!.stock_path), /dt_coffee/)
   assert.equal(byId(scene.elements, 'label')!.text, 'Break')
   assert.equal(byId(scene.elements, 'value')!.text, '15:00')
@@ -146,7 +146,7 @@ test('a break to start: icon, name, length in white, empty row', () => {
 })
 
 test('a running break is shown over its own screen, in its colours', () => {
-  const scene = render({ slide: slide({ screen: 'break', timer: '15m' }), timer: brk() }, 0)
+  const scene = render({ slide: slide({ screen: 'break', timer: ['15m'] }), timer: brk() }, 0)
   assert.match(String(byId(scene.elements, 'icon')!.stock_path), /dt_coffee/)
   assert.equal(byId(scene.elements, 'value')!.text, '10:00')
   assert.equal(byId(scene.elements, 'value')!.color, '#FFFFFFFF')
@@ -182,4 +182,53 @@ test('logos from the configuration are drawn as returned', () => {
   const config = resolveConfig({ logos: { acme: () => [rect('logo', 0, 0, 72, 16, '#F65E5E')] } })
   const elements = render({ slide: slide({ screen: 'acme' }), timer: null }, 0, config).elements
   assert.deepEqual(elements, [rect('logo', 0, 0, 72, 16, '#F65E5E')])
+})
+
+const PHASES = [{ label: 'Reading', ms: 5 * MIN }, { label: 'Coding', ms: 10 * MIN }, { label: null, ms: 5 * MIN }]
+const lab = (index: number, endsAt: number | null, extra: Partial<Timer> = {}): Timer =>
+  ({ ...running(0), label: 'Lab', phases: PHASES, index, totalMs: PHASES[index].ms, endsAt, ...extra })
+
+test('a running phase shows its name and one segment per phase', () => {
+  const scene = render({ slide: null, timer: lab(1, 5 * MIN) }, 0)
+  assert.equal(byId(scene.elements, 'label')!.text, 'Coding')
+  assert.equal(byId(scene.elements, 'seg0')!.width, 23, 'done: full')
+  assert.equal(byId(scene.elements, 'seg1')!.x, 24)
+  assert.equal(byId(scene.elements, 'seg1')!.width, 12, 'half of the current phase')
+  assert.equal(byId(scene.elements, 'seg2'), undefined, 'to come: the track')
+  assert.equal(byId(scene.elements, 'gap1')!.x, 23)
+  assert.equal(byId(scene.elements, 'fill'), undefined)
+})
+
+test('between two phases: calm screen with what comes next', () => {
+  const at = (now: number) => render({ slide: null, timer: lab(0, 0) }, now)
+  const calm = at(2000)
+  assert.equal(byId(calm.elements, 'label')!.text, 'Next Coding')
+  assert.equal(byId(calm.elements, 'value')!.text, '10:00')
+  assert.equal(byId(calm.elements, 'value')!.color, '#FFFFFFFF')
+  assert.equal(byId(calm.elements, 'seg0')!.width, 23)
+  assert.equal(byId(calm.elements, 'seg1'), undefined)
+  assert.equal(calm.led, undefined)
+  assert.equal(calm.nextAt, 30_000, 'next change: the LED')
+  assert.notEqual(byId(at(0).elements, 'label')!.color, byId(at(500).elements, 'label')!.color, 'one short blink')
+  assert.equal(at(30_000).led, '#FFA000FF')
+  assert.equal(at(30_000).nextAt, null)
+})
+
+test('an unnamed phase is numbered', () => {
+  const scene = render({ slide: null, timer: lab(2, MIN) }, 0)
+  assert.equal(byId(scene.elements, 'label')!.text, 'Phase 3')
+})
+
+test('a workshop to start: its name, its first phase, empty segments', () => {
+  const scene = render({ slide: slide({ activity: 'Lab', timer: ['5m Reading', '10m Coding', '5m'] }), timer: null }, 0)
+  assert.equal(byId(scene.elements, 'label')!.text, 'Lab')
+  assert.equal(byId(scene.elements, 'value')!.text, '5:00')
+  assert.ok(byId(scene.elements, 'gap1'))
+  assert.equal(byId(scene.elements, 'seg0'), undefined)
+})
+
+test('a screen slide hides a waiting timer, without a render loop', () => {
+  const scene = render({ slide: slide({ screen: 'questions' }), timer: lab(0, 0) }, 2000)
+  assert.equal(byId(scene.elements, 'title')!.text, 'Questions?')
+  assert.equal(scene.nextAt, null)
 })

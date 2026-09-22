@@ -24,6 +24,7 @@ test('the wheel steps through clicks, or through slides', () => {
 test('timer actions stay on the server, the others go to Slidev', () => {
   assert.deepEqual(route('timer:toggle'), { timer: 'toggle' })
   assert.deepEqual(route('timer:add'), { timer: 'add' })
+  assert.deepEqual(route('timer:skip'), { timer: 'skip' })
   assert.deepEqual(route('timer:cancel'), { timer: 'cancel' })
   assert.deepEqual(route('overview'), { slidev: 'overview' })
   assert.deepEqual(route('goto:3'), { slidev: 'goto:3' })
@@ -35,6 +36,7 @@ test('controls are merged with the defaults, or turned off', () => {
   assert.equal(controls?.ok, 'goto:2')
   assert.equal(controls?.wheel, 'slides')
   assert.equal(controls?.start, 'timer:toggle')
+  assert.equal(resolveConfig({ controls: { ok: 'timer:skip' } }).controls?.ok, 'timer:skip')
   assert.equal(resolveConfig({ controls: false }).controls, null)
 })
 

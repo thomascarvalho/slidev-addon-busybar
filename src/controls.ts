@@ -24,7 +24,7 @@ export function wheelAction(controls: Controls, delta: number): SlidevAction | f
   return delta > 0 ? 'next' : 'prev'
 }
 
-const TIMER: Record<string, TimerAction> = { 'timer:toggle': 'toggle', 'timer:add': 'add', 'timer:cancel': 'cancel' }
+const TIMER: Record<string, TimerAction> = { 'timer:toggle': 'toggle', 'timer:add': 'add', 'timer:skip': 'skip', 'timer:cancel': 'cancel' }
 
 export type Routed = { timer: TimerAction } | { slidev: SlidevAction } | null
 

@@ -11,7 +11,7 @@ import { resolveConfig } from './config.ts'
 import { SCREEN, textWidth } from './draw.ts'
 import { formatClock } from './duration.ts'
 import { toDeviceText } from './text.ts'
-import { armed, remaining, status, WARN_MS } from './timer.ts'
+import { armed, phaseName, remaining, status, WARN_MS } from './timer.ts'
 
 export interface Scene {
   elements: Element[]
@@ -40,6 +40,8 @@ const ICON_SIZE = 16
 /* The bar's native scrolling, in pixels per minute. */
 const SCROLL = { scroll_rate: 900, scroll_start_delay: 1500, scroll_repeat_delay: 2000 }
 const BLINK_MS = 500
+/* The status LED reminds a trainer who missed the end of a phase. */
+const WAIT_LED_MS = 30_000
 
 /* The only font of the bar with accented letters; its capitals are as tall
    as `bold`'s. Timer digits stay in `large`. */
@@ -78,6 +80,30 @@ function bar(ratio: number, color: string | [string, string]): Element[] {
       ? { fill: 'solid' as const, fill_colors: [color] }
       : { fill: 'gradient_h' as const, fill_colors: [...color] }
     elements.push({ ...row, ...fill, id: 'fill', width, z_index: 1 })
+  }
+  return elements
+}
+
+/** One segment per phase on the last row, separated by a dark pixel:
+    `done` phases full, the current one (if any) filled to `ratio` in
+    `color`, the others left as the track. */
+function segments(count: number, done: number, current: { ratio: number, color: string | [string, string] } | null): Element[] {
+  const row = { type: 'rectangle', y: SCREEN.height - 1, height: 1, border_width: 0 } as const
+  const width = Math.floor((SCREEN.width - (count - 1)) / count)
+  const elements: Element[] = [{ ...row, id: 'track', x: 0, width: SCREEN.width, fill: 'solid', fill_colors: [TRACK], z_index: 0 }]
+  for (let i = 0; i < count; i++) {
+    const x = i * (width + 1)
+    const full = i === count - 1 ? SCREEN.width - x : width
+    if (i > 0)
+      elements.push({ ...row, id: `gap${i}`, x: x - 1, width: 1, fill: 'solid', fill_colors: ['#000000FF'], z_index: 2 })
+    const filled = i < done ? full : i === done && current ? Math.round(Math.min(1, Math.max(0, current.ratio)) * full) : 0
+    if (filled > 0) {
+      const color = i < done ? GREEN : current!.color
+      const fill = typeof color === 'string'
+        ? { fill: 'solid' as const, fill_colors: [color] }
+        : { fill: 'gradient_h' as const, fill_colors: [...color] }
+      elements.push({ ...row, ...fill, id: `seg${i}`, x, width: filled, z_index: 1 })
+    }
   }
   return elements
 }
@@ -139,26 +165,50 @@ function renderTimer(timer: Timer, now: number, config: ResolvedConfig): Scene {
   const left = remaining(timer, now)
   const widest = formatClock(timer.totalMs)
   const style = timer.style ? styleOf(timer.style, config) : undefined
+  const many = timer.phases.length > 1
+  const label = many ? phaseName(timer, timer.index, config.labels) : timer.label
   switch (status(timer, now)) {
     case 'running': {
       const ratio = left / timer.totalMs
       /* A break stays calm: white digits, orange in the last minute, the
          row drains in its colour. */
       const elements = style
-        ? [...timerLayout(timer.label, formatClock(left), left <= WARN_MS ? ORANGE : WHITE, style.color, widest, true, style), ...bar(ratio, style.color)]
+        ? [...timerLayout(label, formatClock(left), left <= WARN_MS ? ORANGE : WHITE, style.color, widest, true, style), ...bar(ratio, style.color)]
         : [
-            ...timerLayout(timer.label, formatClock(left), countdownColor(timer, left), WHITE, widest, true),
-            /* The fill shows what is left of the red → green spectrum. */
-            ...bar(ratio, [RED, spectrum(ratio)]),
+            ...timerLayout(label, formatClock(left), countdownColor(timer, left), WHITE, widest, true),
+            /* The fill shows what is left of the red → green spectrum: one
+               phase, a bar; several, one segment per phase. */
+            ...(many ? segments(timer.phases.length, timer.index, { ratio, color: [RED, spectrum(ratio)] }) : bar(ratio, [RED, spectrum(ratio)])),
           ]
       /* Right after the displayed second changes. */
       return { elements, nextAt: now + (left % 1000 || 1000) + 5 }
     }
     case 'paused':
       return {
-        elements: [...timerLayout(timer.label, formatClock(left), GREY, GREY, widest, false, style), ...bar(left / timer.totalMs, GREY)],
+        elements: [
+          ...timerLayout(label, formatClock(left), GREY, GREY, widest, false, style),
+          ...(many ? segments(timer.phases.length, timer.index, { ratio: left / timer.totalMs, color: GREY }) : bar(left / timer.totalMs, GREY)),
+        ],
         nextAt: null,
       }
+    case 'waiting': {
+      /* Calm: what comes next, still; one short blink when the phase ends,
+         the LED if nothing starts for a while. */
+      const since = now - (timer.endsAt ?? now)
+      const next = timer.index + 1
+      const value = formatClock(timer.phases[next].ms)
+      const blink = since < 2 * BLINK_MS && Math.floor(since / BLINK_MS) % 2 === 0
+      return {
+        elements: [
+          ...timerLayout(`${config.labels.upNext} ${phaseName(timer, next, config.labels)}`, value, WHITE, blink ? GREY : WHITE, value, false),
+          ...segments(timer.phases.length, next, null),
+        ],
+        nextAt: since < 2 * BLINK_MS
+          ? now + BLINK_MS - (since % BLINK_MS)
+          : since < WAIT_LED_MS ? (timer.endsAt ?? now) + WAIT_LED_MS : null,
+        led: since >= WAIT_LED_MS ? ORANGE : undefined,
+      }
+    }
     case 'finished': {
       const lit = style?.color ?? RED
       const color = Math.floor(now / BLINK_MS) % 2 === 0 ? lit : mix(lit, '#000000FF', 0.75)
@@ -204,21 +254,24 @@ export function render(state: RenderState, now: number, config: ResolvedConfig =
     const ready = timer ? null : armed(slide, config)
     if (ready) {
       const style = styleOf(slide.screen, config)
-      const value = formatClock(ready.totalMs)
+      const value = formatClock(ready.phases[0].ms)
       /* A break ready to start shows its screen as it is, at full opacity,
          unlike the dimmed hourglass of a plain activity to start. */
       return { elements: [...timerLayout(ready.label, value, WHITE, style.color, value, true, style), ...bar(0, style.color)], nextAt: null }
     }
-    /* A timer running behind the screen must take over when it ends. */
-    return { ...renderScreen(slide, slide.screen, config), nextAt: timer?.endsAt ?? null }
+    /* A timer running behind the screen must take over when it ends; a
+       waiting or paused one has no such moment, or the relay would render
+       again at once (its end already lies in the past). */
+    return { ...renderScreen(slide, slide.screen, config), nextAt: timer && status(timer, now) === 'running' ? timer.endsAt : null }
   }
   if (timer)
     return renderTimer(timer, now, config)
 
   const activity = armed(slide, config)
   if (activity) {
-    const value = formatClock(activity.totalMs)
-    return { elements: [...timerLayout(activity.label, value, WHITE, WHITE, value, false), ...bar(0, WHITE)], nextAt: null }
+    const value = formatClock(activity.phases[0].ms)
+    const row = activity.phases.length > 1 ? segments(activity.phases.length, 0, null) : bar(0, WHITE)
+    return { elements: [...timerLayout(activity.label, value, WHITE, WHITE, value, false), ...row], nextAt: null }
   }
 
   /* Outside any chapter, the slide's (or deck's) title rather than nothing:

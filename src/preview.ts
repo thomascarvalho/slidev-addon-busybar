@@ -26,7 +26,8 @@ const bar = new BusyBar({ addr: process.env.BUSYBAR_ADDR, HTTPAccessPassword: pr
 const config = resolveConfig({ logos: { box: () => [rect('logo', 20, 2, 32, 12, '#FF8FB1')] } })
 const now = Date.now()
 const slide = (extra: Partial<SlideInfo>): SlideInfo => ({ no: 1, title: null, chapter: 'Hooks', chapterNo: 1, progress: { index: 2, count: 5 }, activity: null, timer: null, screen: null, until: null, text: null, ...extra })
-const timer = (leftMs: number, running = true): Timer => ({ label: 'Workshop 1', style: null, totalMs: 15 * 60_000, endsAt: running ? now + leftMs : null, leftMs, rang: false, warned: false })
+const timer = (leftMs: number, running = true): Timer => ({ label: 'Workshop 1', style: null, phases: [{ label: null, ms: 15 * 60_000 }], index: 0, totalMs: 15 * 60_000, endsAt: running ? now + leftMs : null, leftMs, rang: false, warned: false })
+const lab = (index: number, endsAt: number | null): Timer => ({ ...timer(0), label: 'Lab', phases: [{ label: 'Reading', ms: 300_000 }, { label: 'Coding', ms: 600_000 }, { label: 'Sharing', ms: 300_000 }], index, totalMs: [300_000, 600_000, 300_000][index], endsAt, leftMs: 0 })
 
 const states: Record<string, RenderState> = {
   'chapter': { slide: slide({}), timer: null },
@@ -36,17 +37,21 @@ const states: Record<string, RenderState> = {
   'welcome': { slide: slide({ screen: 'welcome' }), timer: null },
   'questions': { slide: slide({ screen: 'questions' }), timer: null },
   'logo': { slide: slide({ screen: 'box' }), timer: null },
-  'activity': { slide: slide({ activity: 'Workshop 1', timer: '15m' }), timer: null },
+  'activity': { slide: slide({ activity: 'Workshop 1', timer: ['15m'] }), timer: null },
   'timer-green': { slide: null, timer: timer(754_000) },
   'timer-short-label': { slide: null, timer: { ...timer(754_000), label: 'Quiz' } },
   'timer-orange': { slide: null, timer: timer(150_000) },
   'timer-red': { slide: null, timer: timer(42_000) },
   'timer-paused': { slide: null, timer: timer(754_000, false) },
   'time-up': { slide: null, timer: timer(-5000) },
-  'break-ready': { slide: slide({ screen: 'break', timer: '15m' }), timer: null },
-  'break-running': { slide: slide({ screen: 'break', timer: '15m' }), timer: { ...timer(754_000), label: 'Break', style: 'break' } },
+  'break-ready': { slide: slide({ screen: 'break', timer: ['15m'] }), timer: null },
+  'break-running': { slide: slide({ screen: 'break', timer: ['15m'] }), timer: { ...timer(754_000), label: 'Break', style: 'break' } },
   'break-last-minute': { slide: null, timer: { ...timer(42_000), label: 'Break', style: 'break' } },
   'break-over': { slide: null, timer: { ...timer(-5000), label: 'Break', style: 'break' } },
+  'lab-ready': { slide: slide({ activity: 'Lab', timer: ['5m Reading', '10m Coding', '5m Sharing'] }), timer: null },
+  'lab-coding': { slide: null, timer: lab(1, now + 300_000) },
+  'lab-next': { slide: null, timer: lab(0, now - 5_000) },
+  'lab-next-led': { slide: null, timer: lab(0, now - 40_000) },
 }
 
 /* "Time's up" and "Break's over!" captured while lit. */

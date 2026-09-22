@@ -18,6 +18,12 @@ function str(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null
 }
 
+/** A value or a list of values → a list of strings, `null` if empty. */
+function strs(value: unknown): string[] | null {
+  const list = (Array.isArray(value) ? value : [value]).map(str).filter((s): s is string => s !== null)
+  return list.length ? list : null
+}
+
 /**
  * @param busy the `busy` block of every slide, in deck order
  * @param current the index (from 0) of the current slide
@@ -51,7 +57,8 @@ export function slideInfo(busy: (BusyFrontmatter | undefined)[], current: number
     chapterNo: start >= 0 ? busy.slice(0, start + 1).filter(b => str(b?.chapter)).length : null,
     progress: start >= 0 ? { index: current - start + 1, count: end - start } : null,
     activity: str(own.activity),
-    timer: str(own.timer),
+    /* Same cap as the server: a lone browser cannot bypass it either. */
+    timer: strs(own.timer)?.slice(0, 10) ?? null,
     screen: str(own.screen),
     until: str(own.until),
     text: str(own.text),

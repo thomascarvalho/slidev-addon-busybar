@@ -142,7 +142,7 @@ function timed() {
   }
 }
 
-const workshop = slide(4, 'Hooks', { activity: 'Workshop 1', timer: '2m' })
+const workshop = slide(4, 'Hooks', { activity: 'Workshop 1', timer: ['2m'] })
 
 test('the timer starts on the shortcut only, then survives going back', async (t) => {
   t.after(() => mock.timers.reset())
@@ -193,7 +193,7 @@ test('an element that changes kind is cleared before being drawn again', async (
   mock.timers.enable({ apis: ['setTimeout'] })
   const { relay, calls, advance } = timed()
 
-  relay.setSlide(slide(4, 'Hooks', { activity: 'Quiz', timer: '1m' }))
+  relay.setSlide(slide(4, 'Hooks', { activity: 'Quiz', timer: ['1m'] }))
   relay.timer('toggle')
   await settle()
   await advance(61_000)
@@ -209,7 +209,7 @@ test('a break warns once in its last minute, then rings at zero', async (t) => {
   t.after(() => mock.timers.reset())
   mock.timers.enable({ apis: ['setTimeout'] })
   const fake = timed()
-  fake.relay.setSlide(slide(6, null, { screen: 'break', timer: '2m' }))
+  fake.relay.setSlide(slide(6, null, { screen: 'break', timer: ['2m'] }))
   fake.relay.timer('toggle')
   await settle()
   for (let s = 0; s < 58; s++)
@@ -234,5 +234,31 @@ test('an activity never warns', async (t) => {
   for (let s = 0; s < 125; s++)
     await fake.advance(1000)
   assert.deepEqual(fake.played, ['shared/calendar_reminder_ends.wav'])
+  await fake.relay.close()
+})
+
+test('each phase ends with the sound, a waiting workshop survives slide changes', async (t) => {
+  t.after(() => mock.timers.reset())
+  mock.timers.enable({ apis: ['setTimeout'] })
+  const fake = timed()
+  fake.relay.setSlide(slide(4, 'Hooks', { activity: 'Lab', timer: ['1m Reading', '1m Coding'] }))
+  fake.relay.timer('toggle')
+  await settle()
+  for (let s = 0; s < 62; s++)
+    await fake.advance(1000)
+  assert.equal(fake.state.sounds, 1)
+  assert.equal(fake.last('label')?.text, 'Next Coding')
+
+  fake.relay.setSlide(slide(5, 'Hooks'))
+  await settle()
+  await fake.advance(1000)
+  assert.equal(fake.last('label')?.text, 'Next Coding', 'still waiting on another slide')
+
+  fake.relay.timer('toggle')
+  await settle()
+  for (let s = 0; s < 62; s++)
+    await fake.advance(1000)
+  assert.equal(fake.state.sounds, 2)
+  assert.equal(fake.last('title')?.text, 'Time\'s up')
   await fake.relay.close()
 })

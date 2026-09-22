@@ -61,6 +61,17 @@ cancel.
 
 ---
 busy:
+  activity: Lab
+  timer: [1m Reading, 2m Coding, 1m Sharing]
+---
+
+# Lab
+
+Each phase waits for Start/Stop; hold Back to cancel. Clicking the wheel
+skips to the next phase.
+
+---
+busy:
   screen: break
   timer: 15m
 ---

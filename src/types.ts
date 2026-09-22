@@ -16,7 +16,8 @@ export interface SlideInfo {
   /** Position of the slide within its chapter, from 1. */
   progress: { index: number, count: number } | null
   activity: string | null
-  timer: string | null
+  /** The `busy.timer` phases, one entry each (`['5m Reading']`). */
+  timer: string[] | null
   screen: string | null
   until: string | null
   text: string | null

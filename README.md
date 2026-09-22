@@ -121,6 +121,24 @@ status LED. Changing slide or pressing `b` dismisses it.
 ![Paused](docs/screens/timer-paused.png)
 ![Time's up](docs/screens/time-up.png)
 
+**A workshop in phases** lists them, each a duration and an optional name:
+
+```yaml
+---
+busy:
+  activity: Hooks workshop
+  timer: [5m Reading, 10m Coding, 5m Sharing]
+---
+```
+
+The bar shows the current phase and its time; the last row has a segment
+per phase. When a phase ends, a sound plays and the bar calmly shows what
+comes next ("Next Coding 10:00") until you start it; after 30 s the status
+LED reminds you. `+` gives the phase that just ended one more minute;
+`timer:skip` (on a bar button, see [From the bar](#from-the-bar)) ends a
+phase early. Changing slide never stops a workshop: only its final "Time's
+up" is dismissed.
+
 **A special screen**: `break`, `questions` or `welcome`, each with its icon and
 colour, or the name of one of your [logos](#logos). `until` adds the resume
 time, `text` replaces the title; any other name is shown as is.
@@ -211,7 +229,7 @@ export default defineConfig({
 | `goto:<n>` | slide `n`, say the day's programme |
 | `overview` | open or close the slides overview |
 | `dark` | toggle dark mode |
-| `timer:toggle`, `timer:add`, `timer:cancel` | as `b`, `+` and `Shift` + `x` |
+| `timer:toggle`, `timer:add`, `timer:skip`, `timer:cancel` | as `b`, `+`, ending the current phase, and `Shift` + `x` |
 | `false` | nothing |
 
 A button with no action when held just does its press action, whenever it is
@@ -227,7 +245,7 @@ import { defineConfig } from 'slidev-addon-busybar'
 
 export default defineConfig({
   locale: 'fr', // 'en' (default) or 'fr'
-  labels: { timeUp: 'Terminé !', breakOver: 'Au travail !' },
+  labels: { timeUp: 'Terminé !', breakOver: 'Au travail !', upNext: 'Ensuite' },
   controls: { ok: 'overview' }, // the bar's controls, see "From the bar"
   chapterColors: ['#D3A5AA', '#7BBADD', '#B25043'],
   screens: {
@@ -346,9 +364,8 @@ fill it in.
 ## Roadmap
 
 - [x] Drive the deck from the bar's wheel and buttons, configurable
-- [ ] Break and welcome screens counting down to `until`, then calling people
-  back
-- [ ] Multi-step workshop timers (read, code, share)
+- [x] Breaks that count down and call people back
+- [x] Workshop timers in phases (read, code, share)
 - [ ] Audience phone page: "done" / "need help" counts in workshops, reactions
 - [ ] Ahead/behind the day's programme, discreetly
 - [ ] Bar reacts to Slidev clicks (`busy.clicks`)

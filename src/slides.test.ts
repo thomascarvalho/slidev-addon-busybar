@@ -6,7 +6,7 @@ const deck = [
   undefined, // cover, before any chapter
   { chapter: 'Hooks' },
   undefined,
-  { activity: 'Workshop 1', timer: '15m' },
+  { activity: 'Workshop 1', timer: ['15m'] },
   { chapter: 'Effects' },
   undefined,
 ]
@@ -33,8 +33,14 @@ test('numbers chapters in deck order', () => {
 
 test('slide-specific fields do not leak to the next slides', () => {
   assert.equal(slideInfo(deck, 3).activity, 'Workshop 1')
-  assert.equal(slideInfo(deck, 3).timer, '15m')
+  assert.deepEqual(slideInfo(deck, 3).timer, ['15m'])
   assert.equal(slideInfo(deck, 4).activity, null)
+})
+
+test('a timer can be a list of phases', () => {
+  const info = slideInfo([{ activity: 'Lab', timer: ['5m Reading', '10m Coding'] }], 0)
+  assert.deepEqual(info.timer, ['5m Reading', '10m Coding'])
+  assert.equal(slideInfo([{ timer: [] }], 0).timer, null)
 })
 
 test('a special screen closes the current chapter', () => {
