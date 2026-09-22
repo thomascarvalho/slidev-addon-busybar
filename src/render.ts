@@ -221,17 +221,6 @@ function renderTimer(timer: Timer, now: number, config: ResolvedConfig): Scene {
   }
 }
 
-/** The next moment worth a render for a timer counting down behind a
-    screen: its one-minute warning if it still has one coming, else its
-    end (a paused or waiting timer has no such moment: the relay would
-    render again at once, its end already lying in the past). */
-function hiddenNextAt(timer: Timer | null, now: number): number | null {
-  if (!timer || status(timer, now) !== 'running')
-    return null
-  const at = timer.endsAt as number
-  return timer.style && !timer.warned && at - WARN_MS > now ? at - WARN_MS : at
-}
-
 function renderScreen(slide: SlideInfo, screen: string, config: ResolvedConfig): Scene {
   const logo = config.logos[screen]
   if (logo)
@@ -251,32 +240,26 @@ function renderScreen(slide: SlideInfo, screen: string, config: ResolvedConfig):
   return { elements: [...elements, ...bar(1, style.color)], nextAt: null }
 }
 
-/* By priority: finished timer (it must be seen); break over its own
-   screen; break ready to start over its screen, so the bar shows what
-   Start/Stop will do; another special screen; a running, paused or
-   waiting timer; activity or break to start; chapter. */
+/* By priority: a timer in progress, whatever its status (it stays in front
+   until it ends and is dismissed, or is cancelled: what the bar shows is
+   what Start/Stop acts on), then the slide: its screen or the break it
+   arms, the activity it arms, its chapter. */
 export function render(state: RenderState, now: number, config: ResolvedConfig = resolveConfig()): Scene {
   const slide = state.slide
   const timer = state.timer
-  if (timer && status(timer, now) === 'finished')
+  if (timer)
     return renderTimer(timer, now, config)
   if (slide?.screen) {
-    if (timer?.style === slide.screen)
-      return renderTimer(timer, now, config)
     const ready = armed(slide, config)
     if (ready) {
       const style = styleOf(slide.screen, config)
       const value = formatClock(ready.phases[0].ms)
       /* A break ready to start shows its screen as it is, at full opacity,
-         unlike the dimmed hourglass of a plain activity to start; this also
-         covers a timer still running under another style, so the bar shows
-         what Start/Stop will do instead of that hidden timer's screen. */
-      return { elements: [...timerLayout(ready.label, value, WHITE, style.color, value, true, style), ...bar(0, style.color)], nextAt: hiddenNextAt(timer, now) }
+         unlike the dimmed hourglass of a plain activity to start. */
+      return { elements: [...timerLayout(ready.label, value, WHITE, style.color, value, true, style), ...bar(0, style.color)], nextAt: null }
     }
-    return { ...renderScreen(slide, slide.screen, config), nextAt: hiddenNextAt(timer, now) }
+    return renderScreen(slide, slide.screen, config)
   }
-  if (timer)
-    return renderTimer(timer, now, config)
 
   const activity = armed(slide, config)
   if (activity) {

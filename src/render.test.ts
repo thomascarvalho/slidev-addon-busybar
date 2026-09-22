@@ -124,14 +124,17 @@ test('special screens: icon, colour, free text and resume time', () => {
   assert.equal(byId(unknown, 'icon'), undefined)
 })
 
-test('a screen wins over a running timer, not over its end', () => {
-  const brk = slide({ screen: 'break' })
-  const hidden = render({ slide: brk, timer: running(5 * MIN, 0) }, 0)
-  assert.equal(byId(hidden.elements, 'title')!.text, 'Break')
-  assert.equal(hidden.nextAt, 5 * MIN, 'render scheduled at the end of the timer')
+test('a timer in progress is drawn over a special screen', () => {
+  const questions = slide({ screen: 'questions' })
+  const scene = render({ slide: questions, timer: running(5 * MIN) }, 0)
+  assert.equal(byId(scene.elements, 'value')!.text, '5:00')
+  assert.equal(byId(scene.elements, 'title'), undefined)
+  assert.equal(scene.nextAt, 0 + 1000 + 5, 'behaves as for any running timer')
 
-  const done = render({ slide: brk, timer: running(5 * MIN, 0) }, 5 * MIN)
-  assert.equal(byId(done.elements, 'title')!.text, 'Time\'s up')
+  const paused: Timer = { ...running(0), endsAt: null, leftMs: 754_000 }
+  const grey = render({ slide: questions, timer: paused }, 0)
+  assert.equal(byId(grey.elements, 'value')!.text, '12:34')
+  assert.equal(byId(grey.elements, 'value')!.color, '#8A8A8AFF')
 })
 
 const brk = (extra: Partial<Timer> = {}): Timer => ({ ...running(10 * MIN), label: 'Break', style: 'break', ...extra })
@@ -166,20 +169,16 @@ test('a paused break: grey, with its icon', () => {
   assert.equal(scene.nextAt, null)
 })
 
-test('another screen still wins over a running break', () => {
+test('a running break stays in front of another screen', () => {
   const scene = render({ slide: slide({ screen: 'questions' }), timer: brk() }, 0)
-  assert.equal(byId(scene.elements, 'title')!.text, 'Questions?')
-})
-
-test('a break slide arms the break over a workshop running elsewhere', () => {
-  const scene = render({ slide: slide({ screen: 'break', timer: ['15m'] }), timer: running(10 * MIN) }, 0)
   assert.match(String(byId(scene.elements, 'icon')!.stock_path), /dt_coffee/)
-  assert.equal(byId(scene.elements, 'value')!.text, '15:00')
+  assert.equal(byId(scene.elements, 'value')!.text, '10:00')
 })
 
-test('a hidden break schedules its render before the one-minute warning', () => {
-  const scene = render({ slide: slide({ screen: 'questions' }), timer: brk({ endsAt: 5 * MIN }) }, 0)
-  assert.equal(scene.nextAt, 4 * MIN, 'wakes for the warning, not just the end')
+test('a break slide with a running workshop still shows the workshop', () => {
+  const scene = render({ slide: slide({ screen: 'break', timer: ['15m'] }), timer: running(5 * MIN) }, 0)
+  assert.equal(byId(scene.elements, 'label')!.text, 'Workshop 1')
+  assert.equal(byId(scene.elements, 'value')!.text, '5:00')
 })
 
 test('the end of a break calls people back, in its colour', () => {
@@ -193,6 +192,13 @@ test('logos from the configuration are drawn as returned', () => {
   const config = resolveConfig({ logos: { acme: () => [rect('logo', 0, 0, 72, 16, '#F65E5E')] } })
   const elements = render({ slide: slide({ screen: 'acme' }), timer: null }, 0, config).elements
   assert.deepEqual(elements, [rect('logo', 0, 0, 72, 16, '#F65E5E')])
+})
+
+test('a logo screen with a running timer renders the timer instead', () => {
+  const config = resolveConfig({ logos: { acme: () => [rect('logo', 0, 0, 72, 16, '#F65E5E')] } })
+  const scene = render({ slide: slide({ screen: 'acme' }), timer: running(5 * MIN) }, 0, config)
+  assert.equal(byId(scene.elements, 'label')!.text, 'Workshop 1')
+  assert.equal(byId(scene.elements, 'value')!.text, '5:00')
 })
 
 const PHASES = [{ label: 'Reading', ms: 5 * MIN }, { label: 'Coding', ms: 10 * MIN }, { label: null, ms: 5 * MIN }]
@@ -238,8 +244,9 @@ test('a workshop to start: its name, its first phase, empty segments', () => {
   assert.equal(byId(scene.elements, 'seg0'), undefined)
 })
 
-test('a screen slide hides a waiting timer, without a render loop', () => {
+test('a waiting timer also stays in front of a screen', () => {
   const scene = render({ slide: slide({ screen: 'questions' }), timer: lab(0, 0) }, 2000)
-  assert.equal(byId(scene.elements, 'title')!.text, 'Questions?')
-  assert.equal(scene.nextAt, null)
+  assert.equal(byId(scene.elements, 'label')!.text, 'Next Coding')
+  assert.equal(byId(scene.elements, 'title'), undefined)
+  assert.equal(scene.nextAt, 30_000)
 })

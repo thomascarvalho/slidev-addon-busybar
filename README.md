@@ -148,8 +148,8 @@ time, `text` replaces the title; any other name is shown as is.
 and counts down once you start it, like an activity. The last minute turns
 orange with a discreet sound; at zero, "Break's over!" blinks in the break's
 colour with the end sound. The countdown stays on the bar when you move on to
-the next slide. Pressing Start/Stop on a break slide starts the break, ending
-a workshop still in progress.
+the next slide. If a workshop is still in progress, the bar keeps showing it:
+end or cancel it (Back held) to start the break.
 
 ```yaml
 ---
@@ -172,10 +172,10 @@ busy:
 ![Questions](docs/screens/questions.png)
 ![Welcome](docs/screens/welcome.png)
 
-A screen takes precedence over the chapter and over a running timer (which
-keeps running and comes back afterwards): a break is shown over its own
-screen, but another screen still hides a running timer. Only the end of a
-timer takes precedence over a screen.
+A timer in progress — running, paused, between two phases or just over — is
+shown in front of every screen and chapter until it ends or is cancelled:
+what the bar shows is what Start/Stop acts on. The slide's screen comes back
+afterwards.
 
 ### Shortcuts
 

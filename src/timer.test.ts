@@ -133,14 +133,17 @@ test('a break keeps its first phase only', () => {
   assert.equal(t.phases.length, 1)
 })
 
-test('toggle on a break slide starts the break, over a workshop still going', () => {
-  let t = run(null, 'toggle', lab, 0)!
-  assert.equal(status(t, 5 * MIN), 'waiting', 'a phase over, waiting for the trainer')
+test('toggle on a break slide pauses a running workshop; with no timer it starts the break', () => {
+  let t = run(null, 'toggle', slide(), 0)!
   const brk = slide({ screen: 'break', timer: ['15m'] })
+
   t = run(t, 'toggle', brk, 5 * MIN)!
-  assert.equal(t.style, 'break')
-  assert.equal(status(t, 5 * MIN), 'running')
-  assert.equal(remaining(t, 5 * MIN), 15 * MIN)
+  assert.equal(status(t, 5 * MIN), 'paused')
+  assert.equal(t.style, null)
+
+  const started = run(null, 'toggle', brk, 5 * MIN)!
+  assert.equal(started.style, 'break')
+  assert.equal(status(started, 5 * MIN), 'running')
 })
 
 test('a break of a minute or less starts already warned', () => {

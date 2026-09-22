@@ -240,24 +240,33 @@ test('an activity never warns', async (t) => {
   await fake.relay.close()
 })
 
-test('toggle on a break slide ends a workshop still going and starts the break', async (t) => {
+test('a break slide waits for a workshop still going: pause, cancel, then start the break', async (t) => {
   t.after(() => mock.timers.reset())
   mock.timers.enable({ apis: ['setTimeout'] })
-  const { relay, last, advance } = timed()
+  const fake = timed({ config: resolveConfig({ sounds: { start: 'volume_change' } }) })
 
-  relay.setSlide(workshop)
-  relay.timer('toggle')
+  fake.relay.setSlide(workshop)
+  fake.relay.timer('toggle')
   await settle()
-  await advance(30_000)
-  assert.equal(last('value')?.text, '1:30', 'the workshop counts down')
+  await fake.advance(30_000)
+  assert.equal(fake.last('value')?.text, '1:30', 'the workshop counts down')
 
-  relay.setSlide(slide(6, null, { screen: 'break', timer: ['15m'] }))
+  fake.relay.setSlide(slide(6, null, { screen: 'break', timer: ['15m'] }))
   await settle()
-  relay.timer('toggle')
+  assert.equal(fake.last('value')?.text, '1:30', 'the bar still shows the workshop')
+
+  fake.relay.timer('toggle')
   await settle()
-  await advance(30_000)
-  assert.equal(last('value')?.text, '14:30', 'the break counts down instead')
-  await relay.close()
+  await fake.advance(30_000)
+  assert.equal(fake.last('value')?.text, '1:30', 'paused: value frozen')
+
+  fake.relay.timer('cancel')
+  await settle()
+  fake.relay.timer('toggle')
+  await settle()
+  assert.equal(fake.last('value')?.text, '15:00', 'the break starts')
+  assert.deepEqual(fake.played, ['shared/volume_change.snd', 'shared/volume_change.snd'], 'the start sound plays again for the break')
+  await fake.relay.close()
 })
 
 test('each phase ends with the sound, a waiting workshop survives slide changes', async (t) => {
@@ -369,21 +378,3 @@ test('a break ending plays sounds.breakOver from the config, not timeUp', async 
   await fake.relay.close()
 })
 
-test('pressing Start/Stop on a break slide while a workshop runs plays the start sound', async (t) => {
-  t.after(() => mock.timers.reset())
-  mock.timers.enable({ apis: ['setTimeout'] })
-  const fake = timed({ config: resolveConfig({ sounds: { start: 'volume_change' } }) })
-
-  fake.relay.setSlide(workshop)
-  fake.relay.timer('toggle')
-  await settle()
-  await fake.advance(30_000)
-  assert.deepEqual(fake.played, ['shared/volume_change.snd'], 'the workshop starting played it once')
-
-  fake.relay.setSlide(slide(6, null, { screen: 'break', timer: ['15m'] }))
-  await settle()
-  fake.relay.timer('toggle')
-  await settle()
-  assert.deepEqual(fake.played, ['shared/volume_change.snd', 'shared/volume_change.snd'], 'the break starting plays it again')
-  await fake.relay.close()
-})

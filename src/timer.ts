@@ -116,14 +116,6 @@ export function act(timer: Timer | null, action: TimerAction, slide: SlideInfo |
     }
   }
 
-  /* A break slide's Start/Stop starts the break, even over a workshop still
-     running, paused or waiting elsewhere: the bar just showed what this
-     press would do (see render()). A break already running under the same
-     screen keeps the toggle below (pause, resume, dismiss). */
-  const ready = armed(slide, names)
-  if (ready?.style && ready.style !== timer.style)
-    return begin(ready, 0, now)
-
   switch (current) {
     case 'finished': return null
     case 'waiting': return begin(timer, timer.index + 1, now)
