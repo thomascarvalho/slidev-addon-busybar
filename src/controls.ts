@@ -26,11 +26,24 @@ export function wheelAction(controls: Controls, delta: number): SlidevAction | f
 
 const TIMER: Record<string, TimerAction> = { 'timer:toggle': 'toggle', 'timer:add': 'add', 'timer:skip': 'skip', 'timer:cancel': 'cancel' }
 
-export type Routed = { timer: TimerAction } | { slidev: SlidevAction } | null
+export type Routed = { timer: TimerAction } | { slidev: SlidevAction } | { set: true } | null
 
 /** Where an action is played. */
 export function route(action: ControlAction): Routed {
   if (!action)
     return null
+  if (action === 'timer:set')
+    return { set: true }
   return TIMER[action] ? { timer: TIMER[action] } : { slidev: action as SlidevAction }
+}
+
+/** While the setting is open, what an action (from a button or `/timer`)
+    does to it: anything else is ignored, so that the setting is never
+    bypassed. */
+export function settingAction(action: TimerAction | ControlAction): 'start' | 'close' | null {
+  if (action === 'toggle' || action === 'timer:toggle')
+    return 'start'
+  if (action === 'cancel' || action === 'timer:cancel' || action === 'timer:set')
+    return 'close'
+  return null
 }

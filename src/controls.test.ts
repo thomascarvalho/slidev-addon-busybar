@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { DEFAULT_CONTROLS, resolveConfig } from './config.ts'
-import { buttonAction, route, wheelAction } from './controls.ts'
+import { buttonAction, route, settingAction, wheelAction } from './controls.ts'
 import { Button } from './input.ts'
 
 test('by default, Start/Stop runs the timer, Back held cancels it, OK does nothing', () => {
@@ -45,4 +45,25 @@ test('an unknown action is refused with the name of the control', () => {
   assert.throws(() => resolveConfig({ controls: { ok: 'goto:0' as never } }), /controls\.ok/)
   assert.throws(() => resolveConfig({ controls: { wheel: 'pages' as never } }), /controls\.wheel/)
   assert.throws(() => resolveConfig({ controls: { start: 'timer' as never } }), /controls\.start/)
+})
+
+test('timer:set opens the setting, on the wheel\'s click held by default', () => {
+  assert.equal(buttonAction(DEFAULT_CONTROLS, Button.OK, true), 'timer:set')
+  assert.equal(buttonAction(DEFAULT_CONTROLS, Button.OK, false), false)
+  assert.deepEqual(route('timer:set'), { set: true })
+})
+
+test('while the setting is open, only start and close reach it', () => {
+  assert.equal(settingAction('toggle'), 'start')
+  assert.equal(settingAction('timer:toggle'), 'start')
+  assert.equal(settingAction('cancel'), 'close')
+  assert.equal(settingAction('timer:cancel'), 'close')
+  assert.equal(settingAction('timer:set'), 'close')
+  assert.equal(settingAction('add'), null)
+  assert.equal(settingAction('skip'), null)
+  assert.equal(settingAction('timer:add'), null)
+  assert.equal(settingAction('timer:skip'), null)
+  assert.equal(settingAction('overview'), null)
+  assert.equal(settingAction('goto:3'), null)
+  assert.equal(settingAction(false), null)
 })

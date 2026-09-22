@@ -3,6 +3,23 @@
 Each `## <version> — <date>` section becomes the notes of that version's
 GitHub release.
 
+## Unreleased
+
+### Changed
+
+- A timer in progress (running, paused, between two phases or just over) now
+  stays in front of every screen until it ends or is cancelled. On a break
+  slide, a workshop still in progress stays on the bar: end or cancel it to
+  start the break (0.3.0 started the break and ended the workshop).
+- `controls.okHold` now defaults to `timer:set`: if you gave `ok` an action,
+  holding the wheel's click now opens the timer setting instead; set
+  `okHold: false` to keep the old behaviour.
+
+### New
+
+- Ad-hoc timer: hold the wheel's click (`timer:set`, the new default of
+  `controls.okHold`), turn the wheel to pick the minutes, press Start/Stop.
+
 ## 0.3.0 — 2026-09-22
 
 The bar becomes a training companion: breaks that call people back,

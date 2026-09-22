@@ -24,6 +24,8 @@ export interface Scene {
 export interface RenderState {
   slide: SlideInfo | null
   timer: Timer | null
+  /** A timer being set with the wheel: duration and expiry. */
+  setting: { ms: number, until: number } | null
 }
 
 const WHITE = '#FFFFFFFF'
@@ -245,6 +247,18 @@ function renderScreen(slide: SlideInfo, screen: string, config: ResolvedConfig):
    what Start/Stop acts on), then the slide: its screen or the break it
    arms, the activity it arms, its chapter. */
 export function render(state: RenderState, now: number, config: ResolvedConfig = resolveConfig()): Scene {
+  /* A timer being set is what the trainer is looking at: in front of
+     everything, digits blinking. */
+  if (state.setting) {
+    const { ms, until } = state.setting
+    const value = formatClock(ms)
+    const lit = Math.floor(now / BLINK_MS) % 2 === 0
+    return {
+      elements: [...timerLayout(config.labels.timer, value, lit ? WHITE : GREY, WHITE, value, true), ...bar(0, WHITE)],
+      nextAt: Math.min(now + BLINK_MS - (now % BLINK_MS), until),
+    }
+  }
+
   const slide = state.slide
   const timer = state.timer
   if (timer)

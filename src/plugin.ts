@@ -30,7 +30,7 @@ import process from 'node:process'
 import { BusyBar } from '@busy-app/busy-lib'
 import { loadConfigFromFile, loadEnv } from 'vite'
 import { resolveConfig } from './config.ts'
-import { buttonAction, route, wheelAction } from './controls.ts'
+import { buttonAction, route, settingAction, wheelAction } from './controls.ts'
 import { createControls, SwitchPosition } from './input.ts'
 import { createRelay, TIMEOUT_MS } from './relay.ts'
 import { createSoundStore } from './sound-store.ts'
@@ -132,11 +132,25 @@ export function busybar(): Plugin {
         windows = windows.filter(w => w.client !== client)
         windows.push({ client, presenter: data?.presenter === true })
       })
+      /* While the setting is open, an action either starts or closes it (or
+         is ignored): it is never bypassed, whether it comes from a bar
+         button or a keyboard shortcut (`/timer`). */
+      function applyToSetting(action: TimerAction | ControlAction) {
+        const mapped = settingAction(action)
+        if (mapped === 'start')
+          relay.startSetting()
+        else if (mapped === 'close')
+          relay.closeSetting()
+      }
       function play(action: ControlAction) {
         const target = route(action)
         if (!target)
           return
         log.debug?.(`control: ${action}`)
+        if ('set' in target) {
+          relay.openSetting()
+          return
+        }
         if ('timer' in target) {
           relay.timer(target.timer)
           return
@@ -148,8 +162,25 @@ export function busybar(): Plugin {
 
       let current = config
       const controls = createControls({
-        step: delta => current.controls && play(wheelAction(current.controls, delta)),
-        press: (button, long) => current.controls && play(buttonAction(current.controls, button, long)),
+        /* While a timer is being set, the wheel sets it and Start/Stop
+           starts it instead of driving the deck. */
+        step(delta) {
+          if (!current.controls)
+            return
+          if (relay.setting())
+            relay.adjust(delta)
+          else
+            play(wheelAction(current.controls, delta))
+        },
+        press(button, long) {
+          if (!current.controls)
+            return
+          const action = buttonAction(current.controls, button, long)
+          if (relay.setting())
+            applyToSetting(action)
+          else
+            play(action)
+        },
         holds: button => !!current.controls && buttonAction(current.controls, button, true) !== false,
         switched(position) {
           if (!current.controls?.switch)
@@ -235,7 +266,10 @@ export function busybar(): Plugin {
           if (!isTimerAction(action))
             return reply(res, 400)
           reply(res, 204)
-          relay.timer(action)
+          if (relay.setting())
+            applyToSetting(action)
+          else
+            relay.timer(action)
           return
         }
         reply(res, 404)

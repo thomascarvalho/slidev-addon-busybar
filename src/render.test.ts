@@ -1,10 +1,12 @@
+import type { ResolvedConfig } from './config.ts'
+import type { RenderState } from './render.ts'
 import type { Timer } from './timer.ts'
 import type { SlideInfo } from './types.ts'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { resolveConfig } from './config.ts'
 import { rect } from './draw.ts'
-import { render } from './render.ts'
+import { render as renderScene } from './render.ts'
 
 const MIN = 60_000
 
@@ -14,6 +16,11 @@ function slide(extra: Partial<SlideInfo>): SlideInfo {
 
 function running(leftMs: number, now = 0): Timer {
   return { label: 'Workshop 1', style: null, phases: [{ label: null, ms: 15 * MIN }], index: 0, totalMs: 15 * MIN, endsAt: now + leftMs, leftMs: 0, rang: false, warned: false }
+}
+
+/** `setting: null` by default: most tests here are unrelated to it. */
+function render(state: Omit<RenderState, 'setting'> & Partial<Pick<RenderState, 'setting'>>, now: number, config?: ResolvedConfig) {
+  return renderScene({ setting: null, ...state }, now, config)
 }
 
 const byId = (elements: { id: string }[], id: string) => elements.find(e => e.id === id) as Record<string, unknown> | undefined
@@ -137,6 +144,13 @@ test('a timer in progress is drawn over a special screen', () => {
   assert.equal(byId(grey.elements, 'value')!.color, '#8A8A8AFF')
 })
 
+test('a finished timer is drawn over a special screen too', () => {
+  const questions = slide({ screen: 'questions' })
+  const scene = render({ slide: questions, timer: running(0) }, 0)
+  assert.equal(byId(scene.elements, 'title')!.text, 'Time\'s up')
+  assert.equal(scene.led, '#FF3030FF')
+})
+
 const brk = (extra: Partial<Timer> = {}): Timer => ({ ...running(10 * MIN), label: 'Break', style: 'break', ...extra })
 
 test('a break to start: icon, name, length in white, empty row', () => {
@@ -249,4 +263,15 @@ test('a waiting timer also stays in front of a screen', () => {
   assert.equal(byId(scene.elements, 'label')!.text, 'Next Coding')
   assert.equal(byId(scene.elements, 'title'), undefined)
   assert.equal(scene.nextAt, 30_000)
+})
+
+test('the setting is drawn in front of everything, digits blinking until it expires', () => {
+  const setting = { ms: 7 * MIN, until: 15_000 }
+  const on = render({ slide: slide({ screen: 'questions' }), timer: running(5 * MIN), setting }, 0)
+  assert.equal(byId(on.elements, 'label')!.text, 'Timer')
+  assert.equal(byId(on.elements, 'value')!.text, '7:00')
+  const off = render({ slide: null, timer: null, setting }, 500)
+  assert.notEqual(byId(on.elements, 'value')!.color, byId(off.elements, 'value')!.color)
+  assert.equal(on.nextAt, 500)
+  assert.equal(render({ slide: null, timer: null, setting }, 14_800).nextAt, 15_000, 'capped at the expiry')
 })

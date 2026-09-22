@@ -42,6 +42,11 @@ export const WARN_MS = 60_000
 
 const MINUTE = 60_000
 
+/** Creates an ad-hoc plain one-phase timer. */
+export function adhoc(ms: number, now: number, names: Names): Timer {
+  return begin({ label: names.labels.timer, style: null, phases: [{ label: null, ms }] }, 0, now)
+}
+
 export function remaining(timer: Timer, now: number): number {
   return timer.endsAt === null ? timer.leftMs : timer.endsAt - now
 }

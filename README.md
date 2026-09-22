@@ -149,7 +149,7 @@ and counts down once you start it, like an activity. The last minute turns
 orange with a discreet sound; at zero, "Break's over!" blinks in the break's
 colour with the end sound. The countdown stays on the bar when you move on to
 the next slide. If a workshop is still in progress, the bar keeps showing it:
-end or cancel it (Back held) to start the break.
+let it end and dismiss it, or cancel it (Back held), to start the break.
 
 ```yaml
 ---
@@ -173,9 +173,9 @@ busy:
 ![Welcome](docs/screens/welcome.png)
 
 A timer in progress — running, paused, between two phases or just over — is
-shown in front of every screen and chapter until it ends or is cancelled:
-what the bar shows is what Start/Stop acts on. The slide's screen comes back
-afterwards.
+shown in front of every screen and chapter until it ends and is dismissed, or
+is cancelled: what the bar shows is what Start/Stop acts on. The slide's
+screen comes back afterwards.
 
 ### Shortcuts
 
@@ -199,6 +199,15 @@ With the switch on APPS, the bar itself drives the deck. By default:
 | Start/Stop | start the slide's activity, pause, resume; start the next workshop phase; dismiss "Time's up" |
 | Start/Stop, held | one more minute |
 | Back, held | cancel the timer |
+| Wheel click, held | set a timer: the wheel picks the minutes, Start/Stop starts it |
+
+**An ad-hoc timer**, for an exercise that was not planned: hold the wheel's
+click, turn the wheel to pick the minutes (it starts from the last duration
+you set), press Start/Stop. The wheel sets the timer even with `wheel: false`.
+Hold Back, hold the click again or wait 15 s to leave without starting. The
+setting and any timer in progress stay in front of the slides. From the
+keyboard, `b` starts the setting and `Shift` + `x` closes it while it is
+open.
 
 Turning the switch away from APPS hands the screen back to the bar; the
 console says so, and the addon redraws as soon as it is back on APPS. With the
@@ -218,7 +227,7 @@ export default defineConfig({
     back: false,
     backHold: 'timer:cancel',
     ok: false,              // the wheel's click
-    okHold: false,
+    okHold: 'timer:set',    // the wheel's click, held
     switch: true,           // say when the switch leaves APPS, redraw on return
   },
 })
@@ -233,6 +242,7 @@ export default defineConfig({
 | `overview` | open or close the slides overview |
 | `dark` | toggle dark mode |
 | `timer:toggle`, `timer:add`, `timer:skip`, `timer:cancel` | as `b`, `+`, ending the current phase, and `Shift` + `x` |
+| `timer:set` | set a timer with the wheel (1 to 120 minutes), Start/Stop starts it |
 | `false` | nothing |
 
 A button with no action when held just does its press action, whenever it is
@@ -424,8 +434,7 @@ fill it in.
 
 ### Release
 
-Write the version's section in [`CHANGELOG.md`](CHANGELOG.md)
-(`## 0.4.0 — <date>`), commit, then:
+Rename `## Unreleased` to `## <version> — <date>`, commit, then:
 
 ```bash
 npm version minor          # or patch / major: bumps, commits and tags
@@ -444,8 +453,7 @@ GitHub release from the changelog section.
 - [x] Workshop timers in phases (read, code, share)
 - [x] Configurable sounds, with your own WAV files
 - [x] Release workflow: tag, test, publish with provenance
-- [ ] Ad-hoc timer set with the wheel, no slide needed
-- [ ] Show-of-hands vote counted with the wheel, results as bars
+- [x] Ad-hoc timer set with the wheel, no slide needed
 - [ ] The day's programme: ahead/behind, "Next: Lunch at 12:30", end-of-day
   report
 - [ ] Participant roulette spun with the wheel

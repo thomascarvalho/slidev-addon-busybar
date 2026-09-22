@@ -2,7 +2,7 @@ import type { SlideInfo } from './types.ts'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { resolveConfig } from './config.ts'
-import { act, phaseName, remaining, status } from './timer.ts'
+import { act, adhoc, phaseName, remaining, status } from './timer.ts'
 
 const MIN = 60_000
 
@@ -156,4 +156,13 @@ test('a timer keeps the sound its slide gave it', () => {
   assert.equal(run(null, 'toggle', slide({ sound: false }), 0)!.sound, null)
   assert.equal(run(null, 'toggle', slide({ sound: 'not a sound!' }), 0)!.sound, undefined)
   assert.equal(run(null, 'toggle', slide(), 0)!.sound, undefined)
+})
+
+test('an ad-hoc timer is a plain one-phase timer named after labels.timer', () => {
+  const t = adhoc(7 * MIN, 1000, names)
+  assert.equal(t.label, 'Timer')
+  assert.equal(t.style, null)
+  assert.deepEqual(t.phases, [{ label: null, ms: 7 * MIN }])
+  assert.equal(status(t, 1000), 'running')
+  assert.equal(remaining(t, 1000 + MIN), 6 * MIN)
 })

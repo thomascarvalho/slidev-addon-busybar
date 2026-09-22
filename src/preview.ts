@@ -30,32 +30,33 @@ const timer = (leftMs: number, running = true): Timer => ({ label: 'Workshop 1',
 const lab = (index: number, endsAt: number | null): Timer => ({ ...timer(0), label: 'Lab', phases: [{ label: 'Reading', ms: 300_000 }, { label: 'Coding', ms: 600_000 }, { label: 'Sharing', ms: 300_000 }], index, totalMs: [300_000, 600_000, 300_000][index], endsAt, leftMs: 0 })
 
 const states: Record<string, RenderState> = {
-  'chapter': { slide: slide({}), timer: null },
-  'chapter-accents': { slide: slide({ chapter: 'Réseau & sécurité', chapterNo: 2 }), timer: null },
-  'section': { slide: slide({ chapter: null, progress: null, title: 'Part 1' }), timer: null },
-  'break': { slide: slide({ screen: 'break', until: '10:45' }), timer: null },
-  'welcome': { slide: slide({ screen: 'welcome' }), timer: null },
-  'questions': { slide: slide({ screen: 'questions' }), timer: null },
-  'logo': { slide: slide({ screen: 'box' }), timer: null },
-  'activity': { slide: slide({ activity: 'Workshop 1', timer: ['15m'] }), timer: null },
-  'timer-green': { slide: null, timer: timer(754_000) },
-  'timer-short-label': { slide: null, timer: { ...timer(754_000), label: 'Quiz' } },
-  'timer-orange': { slide: null, timer: timer(150_000) },
-  'timer-red': { slide: null, timer: timer(42_000) },
-  'timer-paused': { slide: null, timer: timer(754_000, false) },
-  'time-up': { slide: null, timer: timer(-5000) },
-  'break-ready': { slide: slide({ screen: 'break', timer: ['15m'] }), timer: null },
-  'break-running': { slide: slide({ screen: 'break', timer: ['15m'] }), timer: { ...timer(754_000), label: 'Break', style: 'break' } },
-  'break-last-minute': { slide: null, timer: { ...timer(42_000), label: 'Break', style: 'break' } },
-  'break-over': { slide: null, timer: { ...timer(-5000), label: 'Break', style: 'break' } },
-  'lab-ready': { slide: slide({ activity: 'Lab', timer: ['5m Reading', '10m Coding', '5m Sharing'] }), timer: null },
-  'lab-coding': { slide: null, timer: lab(1, now + 300_000) },
-  'lab-next': { slide: null, timer: lab(0, now - 5_000) },
-  'lab-next-led': { slide: null, timer: lab(0, now - 40_000) },
+  'chapter': { slide: slide({}), timer: null, setting: null },
+  'chapter-accents': { slide: slide({ chapter: 'Réseau & sécurité', chapterNo: 2 }), timer: null, setting: null },
+  'section': { slide: slide({ chapter: null, progress: null, title: 'Part 1' }), timer: null, setting: null },
+  'break': { slide: slide({ screen: 'break', until: '10:45' }), timer: null, setting: null },
+  'welcome': { slide: slide({ screen: 'welcome' }), timer: null, setting: null },
+  'questions': { slide: slide({ screen: 'questions' }), timer: null, setting: null },
+  'logo': { slide: slide({ screen: 'box' }), timer: null, setting: null },
+  'activity': { slide: slide({ activity: 'Workshop 1', timer: ['15m'] }), timer: null, setting: null },
+  'timer-green': { slide: null, timer: timer(754_000), setting: null },
+  'timer-short-label': { slide: null, timer: { ...timer(754_000), label: 'Quiz' }, setting: null },
+  'timer-orange': { slide: null, timer: timer(150_000), setting: null },
+  'timer-red': { slide: null, timer: timer(42_000), setting: null },
+  'timer-paused': { slide: null, timer: timer(754_000, false), setting: null },
+  'time-up': { slide: null, timer: timer(-5000), setting: null },
+  'break-ready': { slide: slide({ screen: 'break', timer: ['15m'] }), timer: null, setting: null },
+  'break-running': { slide: slide({ screen: 'break', timer: ['15m'] }), timer: { ...timer(754_000), label: 'Break', style: 'break' }, setting: null },
+  'break-last-minute': { slide: null, timer: { ...timer(42_000), label: 'Break', style: 'break' }, setting: null },
+  'break-over': { slide: null, timer: { ...timer(-5000), label: 'Break', style: 'break' }, setting: null },
+  'lab-ready': { slide: slide({ activity: 'Lab', timer: ['5m Reading', '10m Coding', '5m Sharing'] }), timer: null, setting: null },
+  'lab-coding': { slide: null, timer: lab(1, now + 300_000), setting: null },
+  'lab-next': { slide: null, timer: lab(0, now - 5_000), setting: null },
+  'lab-next-led': { slide: null, timer: lab(0, now - 40_000), setting: null },
+  'setting': { slide: slide({}), timer: null, setting: { ms: 7 * 60_000, until: now + 15_000 } },
 }
 
-/* "Time's up" and "Break's over!" captured while lit. */
-const at = (name: string) => name === 'time-up' || name === 'break-over' ? now - (now % 1000) : now
+/* "Time's up", "Break's over!" and the setting captured while lit. */
+const at = (name: string) => name === 'time-up' || name === 'break-over' || name === 'setting' ? now - (now % 1000) : now
 
 function png(px: Uint8Array, file: string) {
   const W = 72

@@ -15,13 +15,9 @@ const HEART = [
 export default defineConfig({
   locale: 'en',
   /* The wheel steps through the deck and Start/Stop runs the timer (the
-     defaults); clicking the wheel ends the current workshop phase (a
-     second click, or Start/Stop, starts the next one), holding it opens
-     the overview. */
-  controls: {
-    ok: 'timer:skip',
-    okHold: 'overview',
-  },
+     defaults); clicking the wheel ends the current workshop phase; holding
+     it sets an ad-hoc timer (the default). */
+  controls: { ok: 'timer:skip' },
   /* The end of a break rings the deck's own chime (converted and uploaded
      by the addon); the other moments keep the bar's sounds. */
   sounds: {

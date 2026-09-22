@@ -9,16 +9,22 @@ import type { AudioPlayParams, DisplayClearParams, DisplayDrawParams, RequestOpt
 import type { ResolvedConfig, SoundMoment } from './config.ts'
 import type { RenderState } from './render.ts'
 import type { Sound, SoundPlayer } from './sounds.ts'
-import type { TimerAction } from './timer.ts'
+import type { Timer, TimerAction } from './timer.ts'
 import type { Element, SlideInfo } from './types.ts'
 import { DEFAULT_SOUNDS, resolveConfig } from './config.ts'
 import { render } from './render.ts'
 import { APPLICATION, stockPlayer } from './sounds.ts'
-import { act, remaining, status, WARN_MS } from './timer.ts'
+import { act, adhoc, remaining, status, WARN_MS } from './timer.ts'
 
 const PRIORITY = 50
 export const TIMEOUT_MS = 1500
 const RETRY_MS = 5000
+/** How long the wheel may go untouched before the setting closes. */
+export const SETTING_MS = 15_000
+/** The duration the wheel opens on, the first time. */
+export const FIRST_SETTING_MS = 5 * 60_000
+export const MIN_SETTING_MS = 60_000
+export const MAX_SETTING_MS = 120 * 60_000
 
 /** What the relay needs from a `BusyBar` client. */
 export interface Bar {
@@ -44,8 +50,10 @@ export interface RelayOptions {
 export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
   const { now = Date.now, sounds = stockPlayer } = options
   let config = options.config ?? resolveConfig()
-  const state: RenderState = { slide: null, timer: null }
+  const state: RenderState = { slide: null, timer: null, setting: null }
   let lastSlide = ''
+  /* The duration the wheel reopens on: the first time, or the last one set. */
+  let lastSettingMs = FIRST_SETTING_MS
 
   /* What the bar shows, by element id; `null` when we do not know (at start,
      after a failure), which forces a full clear: a server killed abruptly may
@@ -74,14 +82,56 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
     void flush()
   }
 
-  function timer(action: TimerAction) {
+  /** Swaps the timer, playing the start sound when a timer or a phase
+      starts (not on resume, not on one more minute). */
+  function replace(next: Timer | null) {
     const before = state.timer
-    state.timer = act(before, action, state.slide, now(), config)
-    log.debug?.(`timer: ${action}`)
-    const after = state.timer
-    /* A new timer, or its next phase: not a resume, not one more minute. */
-    if (after && status(after, now()) === 'running' && (!before || after.phases !== before.phases || after.index !== before.index))
+    state.timer = next
+    if (next && status(next, now()) === 'running' && (!before || next.phases !== before.phases || next.index !== before.index))
       play('start')
+    void flush()
+  }
+
+  function timer(action: TimerAction) {
+    log.debug?.(`timer: ${action}`)
+    replace(act(state.timer, action, state.slide, now(), config))
+  }
+
+  /** The setting, or `null` once it has expired: honoured directly, without
+      waiting for `flush()` to notice (the bar may be failing). */
+  function activeSetting() {
+    return state.setting && now() < state.setting.until ? state.setting : null
+  }
+
+  /** Opens the wheel on the last duration set, or 5 min the first time. */
+  function openSetting() {
+    state.setting = { ms: lastSettingMs, until: now() + SETTING_MS }
+    void flush()
+  }
+
+  /** Moves the wheel by `delta` minutes, clamped to 1..120 min. */
+  function adjust(delta: number) {
+    const setting = activeSetting()
+    if (!setting)
+      return
+    const ms = Math.min(MAX_SETTING_MS, Math.max(MIN_SETTING_MS, setting.ms + delta * 60_000))
+    state.setting = { ms, until: now() + SETTING_MS }
+    void flush()
+  }
+
+  /** Starts the set duration as an ad-hoc timer, closing the wheel. */
+  function startSetting() {
+    const setting = activeSetting()
+    if (!setting)
+      return
+    lastSettingMs = setting.ms
+    state.setting = null
+    replace(adhoc(lastSettingMs, now(), config))
+  }
+
+  /** Closes the setting, starting nothing. */
+  function closeSetting() {
+    state.setting = null
     void flush()
   }
 
@@ -135,6 +185,7 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
     let nextAt: number | null = null
     try {
       for (;;) {
+        state.setting = activeSetting()
         ring()
         const scene = render(state, now(), config)
         nextAt = scene.nextAt
@@ -206,7 +257,7 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
       await bar.DisplayClear({ application_name: APPLICATION }, { timeout: TIMEOUT_MS }).catch(() => {})
   }
 
-  return { setSlide, timer, configure, redraw, close, flush }
+  return { setSlide, timer, setting: () => activeSetting() !== null, openSetting, adjust, startSetting, closeSetting, configure, redraw, close, flush }
 }
 
 /** Whether redrawing `after` over `before` would leave some of `before`'s

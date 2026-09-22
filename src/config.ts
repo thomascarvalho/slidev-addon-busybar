@@ -31,7 +31,7 @@ export type Locale = 'en' | 'fr'
 /** Played in the browser window that the bar drives. */
 export type SlidevAction = 'next' | 'prev' | 'nextSlide' | 'prevSlide' | 'first' | 'last' | 'overview' | 'dark' | `goto:${number}`
 /** Played by the dev server. */
-export type TimerControl = 'timer:toggle' | 'timer:add' | 'timer:skip' | 'timer:cancel'
+export type TimerControl = 'timer:toggle' | 'timer:add' | 'timer:skip' | 'timer:cancel' | 'timer:set'
 /** What a button of the bar does; `false` for nothing. */
 export type ControlAction = SlidevAction | TimerControl | false
 
@@ -106,7 +106,7 @@ export const DEFAULT_CONTROLS: Controls = {
   back: false,
   backHold: 'timer:cancel',
   ok: false,
-  okHold: false,
+  okHold: 'timer:set',
   switch: true,
 }
 
@@ -131,7 +131,7 @@ function resolveSounds(config: BusybarConfig['sounds']): Record<SoundMoment, Sou
   return sounds
 }
 
-const ACTIONS = new Set(['next', 'prev', 'nextSlide', 'prevSlide', 'first', 'last', 'overview', 'dark', 'timer:toggle', 'timer:add', 'timer:skip', 'timer:cancel'])
+const ACTIONS = new Set(['next', 'prev', 'nextSlide', 'prevSlide', 'first', 'last', 'overview', 'dark', 'timer:toggle', 'timer:add', 'timer:skip', 'timer:cancel', 'timer:set'])
 
 export function isControlAction(value: unknown): value is ControlAction {
   return value === false || (typeof value === 'string' && (ACTIONS.has(value) || /^goto:[1-9]\d*$/.test(value)))
