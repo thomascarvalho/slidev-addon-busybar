@@ -131,7 +131,8 @@ busy:
 ---
 ```
 
-The bar shows the current phase and its time; the last row has a segment
+A phase without a name is called after `labels.phase` and its number ("Phase
+2"). The bar shows the current phase and its time; the last row has a segment
 per phase. When a phase ends, a sound plays and the bar calmly shows what
 comes next ("Next Coding 10:00") until you start it; after 30 s the status
 LED reminds you. `+` gives the phase that just ended one more minute;
@@ -147,7 +148,8 @@ time, `text` replaces the title; any other name is shown as is.
 and counts down once you start it, like an activity. The last minute turns
 orange with a discreet sound; at zero, "Break's over!" blinks in the break's
 colour with the end sound. The countdown stays on the bar when you move on to
-the next slide.
+the next slide. Pressing Start/Stop on a break slide starts the break, ending
+a workshop still in progress.
 
 ```yaml
 ---
@@ -171,14 +173,15 @@ busy:
 ![Welcome](docs/screens/welcome.png)
 
 A screen takes precedence over the chapter and over a running timer (which
-keeps running and comes back afterwards). Only the end of a timer takes
-precedence over a screen.
+keeps running and comes back afterwards): a break is shown over its own
+screen, but another screen still hides a running timer. Only the end of a
+timer takes precedence over a screen.
 
 ### Shortcuts
 
 | Key | Effect |
 |---|---|
-| `b` or `.` | start the slide's activity, pause, resume; dismiss "Time's up" |
+| `b` or `.` | start the slide's activity, pause, resume; start the next workshop phase; dismiss "Time's up" |
 | `+` or `=` | one more minute (a finished timer too) |
 | `Shift` + `x` | cancel the timer |
 
@@ -193,7 +196,7 @@ With the switch on APPS, the bar itself drives the deck. By default:
 | On the bar | Effect |
 |---|---|
 | Wheel | next or previous click or slide, one per notch |
-| Start/Stop | start the slide's activity, pause, resume; dismiss "Time's up" |
+| Start/Stop | start the slide's activity, pause, resume; start the next workshop phase; dismiss "Time's up" |
 | Start/Stop, held | one more minute |
 | Back, held | cancel the timer |
 

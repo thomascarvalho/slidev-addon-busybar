@@ -68,7 +68,9 @@ export function armed(slide: SlideInfo | null, names: Names): { label: string, s
 /** Starts phase `index`. */
 function begin(timer: Omit<Timer, 'index' | 'totalMs' | 'endsAt' | 'leftMs' | 'rang' | 'warned'>, index: number, now: number): Timer {
   const ms = timer.phases[index].ms
-  return { ...timer, index, totalMs: ms, endsAt: now + ms, leftMs: 0, rang: false, warned: false }
+  /* A phase this short is already within its last minute: warn right away
+     rather than never (the warning only fires on the way past WARN_MS). */
+  return { ...timer, index, totalMs: ms, endsAt: now + ms, leftMs: 0, rang: false, warned: ms <= WARN_MS }
 }
 
 /**
@@ -106,6 +108,14 @@ export function act(timer: Timer | null, action: TimerAction, slide: SlideInfo |
       case 'finished': return timer
     }
   }
+
+  /* A break slide's Start/Stop starts the break, even over a workshop still
+     running, paused or waiting elsewhere: the bar just showed what this
+     press would do (see render()). A break already running under the same
+     screen keeps the toggle below (pause, resume, dismiss). */
+  const ready = armed(slide, names)
+  if (ready?.style && ready.style !== timer.style)
+    return begin(ready, 0, now)
 
   switch (current) {
     case 'finished': return null

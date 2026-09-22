@@ -15,8 +15,9 @@ const HEART = [
 export default defineConfig({
   locale: 'en',
   /* The wheel steps through the deck and Start/Stop runs the timer (the
-     defaults); clicking the wheel skips to the next workshop phase, holding
-     it opens the overview. */
+     defaults); clicking the wheel ends the current workshop phase (a
+     second click, or Start/Stop, starts the next one), holding it opens
+     the overview. */
   controls: {
     ok: 'timer:skip',
     okHold: 'overview',

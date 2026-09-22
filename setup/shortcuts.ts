@@ -2,11 +2,11 @@
    of the bar's own buttons and wheel.
 
    `b` and `.` are the keys sent by the "blank screen" button of presentation
-   remotes: one button is enough to start, pause and resume. The other two
-   stay on the keyboard, and cancelling needs Shift so that it does not happen
-   by accident.
+   remotes: one button is enough to start, pause, resume and move a workshop
+   to its next phase. The other two stay on the keyboard, and cancelling
+   needs Shift so that it does not happen by accident.
 
-     b  or  .      start / pause / resume (and acknowledge "Time's up")
+     b  or  .      start / pause / resume / next phase (and acknowledge "Time's up")
      +  or  =      one more minute
      Shift + x     cancel the timer */
 import type { NavOperations, ShortcutOptions } from '@slidev/types'

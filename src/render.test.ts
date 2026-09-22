@@ -171,6 +171,17 @@ test('another screen still wins over a running break', () => {
   assert.equal(byId(scene.elements, 'title')!.text, 'Questions?')
 })
 
+test('a break slide arms the break over a workshop running elsewhere', () => {
+  const scene = render({ slide: slide({ screen: 'break', timer: ['15m'] }), timer: running(10 * MIN) }, 0)
+  assert.match(String(byId(scene.elements, 'icon')!.stock_path), /dt_coffee/)
+  assert.equal(byId(scene.elements, 'value')!.text, '15:00')
+})
+
+test('a hidden break schedules its render before the one-minute warning', () => {
+  const scene = render({ slide: slide({ screen: 'questions' }), timer: brk({ endsAt: 5 * MIN }) }, 0)
+  assert.equal(scene.nextAt, 4 * MIN, 'wakes for the warning, not just the end')
+})
+
 test('the end of a break calls people back, in its colour', () => {
   const on = render({ slide: null, timer: brk({ endsAt: 0 }) }, 0, resolveConfig({ locale: 'fr' }))
   assert.equal(byId(on.elements, 'title')!.text, 'On reprend !')

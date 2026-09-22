@@ -68,7 +68,7 @@ busy:
 # Lab
 
 Each phase waits for Start/Stop; hold Back to cancel. Clicking the wheel
-skips to the next phase.
+ends the current phase; click again (or Start/Stop) to start the next one.
 
 ---
 busy:

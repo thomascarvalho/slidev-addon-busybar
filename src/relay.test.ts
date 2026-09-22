@@ -237,6 +237,26 @@ test('an activity never warns', async (t) => {
   await fake.relay.close()
 })
 
+test('toggle on a break slide ends a workshop still going and starts the break', async (t) => {
+  t.after(() => mock.timers.reset())
+  mock.timers.enable({ apis: ['setTimeout'] })
+  const { relay, last, advance } = timed()
+
+  relay.setSlide(workshop)
+  relay.timer('toggle')
+  await settle()
+  await advance(30_000)
+  assert.equal(last('value')?.text, '1:30', 'the workshop counts down')
+
+  relay.setSlide(slide(6, null, { screen: 'break', timer: ['15m'] }))
+  await settle()
+  relay.timer('toggle')
+  await settle()
+  await advance(30_000)
+  assert.equal(last('value')?.text, '14:30', 'the break counts down instead')
+  await relay.close()
+})
+
 test('each phase ends with the sound, a waiting workshop survives slide changes', async (t) => {
   t.after(() => mock.timers.reset())
   mock.timers.enable({ apis: ['setTimeout'] })
