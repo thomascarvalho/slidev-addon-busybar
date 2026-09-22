@@ -41,7 +41,7 @@
     "build": "tsc -p tsconfig.build.json",
     "test": "node --test \"src/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
-    "dev": "npm run build && slidev example/slides.md",
+    "dev": "npm run build && slidev example/slides.md --open",
     "preview": "node --env-file=.env.local src/preview.ts",
     "prepack": "npm run build"
   },
