@@ -19,11 +19,12 @@ const PRIORITY = 50
 export const TIMEOUT_MS = 1500
 const RETRY_MS = 5000
 
-/* Firmware sound played when a timer runs out. */
-export const DEFAULT_SOUND = 'shared/calendar_reminder_ends.wav'
+/* Firmware sound played when a timer runs out. `.snd`, not `wav`: the
+   firmware answers OK to a `wav` path but plays nothing. */
+export const DEFAULT_SOUND = 'shared/calendar_reminder_ends.snd'
 /* Firmware sound played when a break has a minute left: short and
    discreet, the moment people put their coffee down. */
-export const DEFAULT_WARN_SOUND = 'shared/volume_change.wav'
+export const DEFAULT_WARN_SOUND = 'shared/volume_change.snd'
 
 /** What the relay needs from a `BusyBar` client. */
 export interface Bar {

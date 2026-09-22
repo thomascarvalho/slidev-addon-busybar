@@ -73,8 +73,8 @@ addons:
    | `BUSYBAR_ADDR` | address of the bar; `10.0.4.20` by default |
    | `BUSYBAR_PASSWORD` | HTTP access code of the bar |
    | `BUSYBAR_ENABLED` | `false` turns the addon off |
-   | `BUSYBAR_SOUND` | end-of-timer sound; empty for none. Default: `shared/calendar_reminder_ends.wav` |
-   | `BUSYBAR_WARN_SOUND` | a break's one-minute warning; empty for none. Default: `shared/volume_change.wav` |
+   | `BUSYBAR_SOUND` | end-of-timer sound; empty for none. Default: `shared/calendar_reminder_ends.snd` |
+   | `BUSYBAR_WARN_SOUND` | a break's one-minute warning; empty for none. Default: `shared/volume_change.snd` |
    | `BUSYBAR_DEBUG` | `true` logs every call to the bar |
 
 4. Run `slidev`: the console shows `[busybar] relay to …`.
@@ -324,7 +324,9 @@ Tested on firmware 1.2.4 (API 27.5.0). None of it is in the official docs:
 - Firmware images and animations are addressed as
   `shared/images/<name>.image` and `shared/animations/<name>.anim`.
 - The firmware 1.2.4 ships three sounds: `calendar_event_starts`,
-  `calendar_reminder_ends` and `volume_change` (`shared/<name>.wav`).
+  `calendar_reminder_ends` and `volume_change`, addressed as
+  `shared/<name>.snd`. The same path with a `wav` extension is accepted (a
+  200 OK) but plays nothing.
 - `led_notification_color` on a draw blinks the status LED; the next draw
   without it stops it.
 - Buttons, wheel and switch come on the WebSocket `/api/status/ws`

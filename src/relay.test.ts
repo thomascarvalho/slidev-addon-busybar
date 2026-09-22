@@ -217,10 +217,10 @@ test('a break warns once in its last minute, then rings at zero', async (t) => {
   assert.deepEqual(fake.played, [], 'not yet')
   for (let s = 0; s < 5; s++)
     await fake.advance(1000)
-  assert.deepEqual(fake.played, ['shared/volume_change.wav'])
+  assert.deepEqual(fake.played, ['shared/volume_change.snd'])
   for (let s = 0; s < 62; s++)
     await fake.advance(1000)
-  assert.deepEqual(fake.played, ['shared/volume_change.wav', 'shared/calendar_reminder_ends.wav'])
+  assert.deepEqual(fake.played, ['shared/volume_change.snd', 'shared/calendar_reminder_ends.snd'])
   await fake.relay.close()
 })
 
@@ -233,7 +233,7 @@ test('an activity never warns', async (t) => {
   await settle()
   for (let s = 0; s < 125; s++)
     await fake.advance(1000)
-  assert.deepEqual(fake.played, ['shared/calendar_reminder_ends.wav'])
+  assert.deepEqual(fake.played, ['shared/calendar_reminder_ends.snd'])
   await fake.relay.close()
 })
 
