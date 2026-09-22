@@ -51,13 +51,14 @@ The wheel steps through clicks too, like this one.
 busy:
   activity: Quiz
   timer: 90s
+  sound: calendar_event_starts
 ---
 
 # Quiz
 
 Press Start/Stop on the bar (or `b`) to start the timer, again to pause.
 Hold it (or press `+`) for one more minute; hold Back (or `Shift` + `x`) to
-cancel.
+cancel. Its end rings its own sound (`busy.sound`).
 
 ---
 busy:

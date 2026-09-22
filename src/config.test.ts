@@ -36,3 +36,16 @@ test('colours are normalised to the bar format', () => {
 test('an unknown locale is an error', () => {
   assert.throws(() => resolveConfig({ locale: 'de' as never }), /unknown locale/)
 })
+
+test('sounds: defaults, overrides, silence, and errors naming the key', () => {
+  const defaults = resolveConfig().sounds
+  assert.deepEqual(defaults.timeUp, { stock: 'calendar_reminder_ends' })
+  assert.deepEqual(defaults.breakWarning, { stock: 'volume_change' })
+  assert.equal(defaults.start, null)
+  const custom = resolveConfig({ sounds: { breakOver: './gong.wav', timeUp: false } }).sounds
+  assert.deepEqual(custom.breakOver, { file: './gong.wav' })
+  assert.equal(custom.timeUp, null)
+  assert.deepEqual(custom.phaseEnd, { stock: 'calendar_reminder_ends' }, 'the rest keeps its default')
+  assert.throws(() => resolveConfig({ sounds: { timeUp: 'gong.mp3' } }), /sounds\.timeUp/)
+  assert.throws(() => resolveConfig({ sounds: { ending: 'volume_change' } as never }), /sounds\.ending/)
+})

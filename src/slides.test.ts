@@ -68,3 +68,9 @@ test('passes the slide title on', () => {
   assert.equal(slideInfo([undefined], 0, 'Part 1').title, 'Part 1')
   assert.equal(slideInfo([undefined], 0).title, null)
 })
+
+test('a slide can give its timer a sound, or silence it', () => {
+  assert.equal(slideInfo([{ timer: '5m', sound: './gong.wav' }], 0).sound, './gong.wav')
+  assert.equal(slideInfo([{ timer: '5m', sound: false }], 0).sound, false)
+  assert.equal(slideInfo([{ timer: '5m' }], 0).sound, null)
+})

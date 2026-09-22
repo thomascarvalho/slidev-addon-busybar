@@ -9,7 +9,7 @@ import { render } from './render.ts'
 const MIN = 60_000
 
 function slide(extra: Partial<SlideInfo>): SlideInfo {
-  return { no: 1, title: null, chapter: null, chapterNo: null, progress: null, activity: null, timer: null, screen: null, until: null, text: null, ...extra }
+  return { no: 1, title: null, chapter: null, chapterNo: null, progress: null, activity: null, timer: null, screen: null, until: null, text: null, sound: null, ...extra }
 }
 
 function running(leftMs: number, now = 0): Timer {

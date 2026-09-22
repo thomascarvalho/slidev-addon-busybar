@@ -11,6 +11,8 @@ own.
   runs the timer
 - **Special screens**: break (with the resume time), questions, welcome, your
   own logos
+- **Your own sounds**: every moment can ring a stock sound, one of your WAV
+  files, or nothing
 - Accented text, long titles scrolling, English and French built in
 
 ![Chapter and progress](docs/screens/chapter.png)
@@ -73,8 +75,6 @@ addons:
    | `BUSYBAR_ADDR` | address of the bar; `10.0.4.20` by default |
    | `BUSYBAR_PASSWORD` | HTTP access code of the bar |
    | `BUSYBAR_ENABLED` | `false` turns the addon off |
-   | `BUSYBAR_SOUND` | end-of-timer sound; empty for none. Default: `shared/calendar_reminder_ends.snd` |
-   | `BUSYBAR_WARN_SOUND` | a break's one-minute warning; empty for none. Default: `shared/volume_change.snd` |
    | `BUSYBAR_DEBUG` | `true` logs every call to the bar |
 
 4. Run `slidev`: the console shows `[busybar] relay to …`.
@@ -287,6 +287,58 @@ export default defineConfig({
 
 [`example/busybar.config.ts`](example/busybar.config.ts) has a complete one.
 
+### Sounds
+
+Every moment has its sound: a stock sound of the bar, a WAV file of your
+deck, or `false` for silence.
+
+```ts
+export default defineConfig({
+  sounds: {
+    timeUp: 'calendar_reminder_ends',  // an activity runs out
+    breakOver: './sounds/gong.wav',    // a break runs out
+    breakWarning: 'volume_change',     // a break has a minute left
+    phaseEnd: 'calendar_event_starts', // a workshop phase runs out
+    start: false,                      // a timer or phase starts
+  },
+})
+```
+
+| Moment | Default |
+|---|---|
+| `timeUp` | `calendar_reminder_ends` |
+| `breakOver` | `calendar_reminder_ends` |
+| `breakWarning` | `volume_change` |
+| `phaseEnd` | `calendar_reminder_ends` |
+| `start` | none |
+
+The stock sounds are `calendar_event_starts`, `calendar_reminder_ends` and
+`volume_change`. A WAV file (any rate, mono or stereo, 8 to 32-bit or float)
+is converted and uploaded to the bar when `slidev` starts and whenever it
+changes; sounds are cut at 10 s. Other formats (MP3…) must be converted
+first, for instance with `ffmpeg -i gong.mp3 gong.wav`. If a file cannot be
+played, the console says why once and the moment's default sound rings
+instead.
+
+Replaces `BUSYBAR_SOUND` and `BUSYBAR_WARN_SOUND`, removed in 0.3.0.
+
+A slide can give its timer its own end sound, or silence it:
+
+```yaml
+---
+busy:
+  activity: Hooks workshop
+  timer: [5m Reading, 10m Coding, 5m Sharing]
+  sound: ./sounds/gong.wav
+---
+```
+
+`busy.sound` is a WAV file inside the deck's folder, a stock name, or
+`false`. A slide's file is uploaded as soon as that slide is shown, long
+before its timer can end. An invalid value (a path outside the deck, a
+format other than WAV, an unknown stock name) keeps the deck's sound, with a
+console warning.
+
 ### Firmware icons
 
 `screens.<name>.icon` takes the name of an image stored on the bar, such as
@@ -338,6 +390,10 @@ Tested on firmware 1.2.4 (API 27.5.0). None of it is in the official docs:
 - That stream sometimes goes silent after a minute or so without closing:
   the addon reconnects after 5 s of silence. busy-lib's `LocalStateStream`
   needs a browser Web Worker, so the addon reads the socket itself.
+- The firmware plays every sound file as raw PCM, signed 16-bit
+  little-endian, mono, 44 100 Hz, and ignores headers: a 22 050 Hz WAV plays
+  twice as fast. The addon converts WAV files and uploads them to its assets
+  (`AssetsUpload`), then plays them with `AudioPlay({ path })`.
 
 ## How it works
 
@@ -371,13 +427,14 @@ fill it in.
 - [x] Drive the deck from the bar's wheel and buttons, configurable
 - [x] Breaks that count down and call people back
 - [x] Workshop timers in phases (read, code, share)
+- [x] Configurable sounds, with your own WAV files
 - [ ] Audience phone page: "done" / "need help" counts in workshops, reactions
 - [ ] Ahead/behind the day's programme, discreetly
 - [ ] Bar reacts to Slidev clicks (`busy.clicks`)
 - [ ] Animated chapter transitions
 - [ ] Countdown before the start, finale on the last slide
 - [ ] Presenter dashboard on the back screen (clock, next chapter, timer)
-- [ ] Configurable keyboard shortcuts, more locales, custom end sound
+- [ ] Configurable keyboard shortcuts, more locales
 - [ ] Logos from a PNG
 - [ ] Verify USB on hardware
 - [ ] Integration tests against the emulator, release workflow

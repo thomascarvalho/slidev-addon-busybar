@@ -7,7 +7,7 @@ import { act, phaseName, remaining, status } from './timer.ts'
 const MIN = 60_000
 
 function slide(extra: Partial<SlideInfo> = {}): SlideInfo {
-  return { no: 4, title: null, chapter: 'Hooks', chapterNo: 1, progress: null, activity: 'Workshop 1', timer: ['15m'], screen: null, until: null, text: null, ...extra }
+  return { no: 4, title: null, chapter: 'Hooks', chapterNo: 1, progress: null, activity: 'Workshop 1', timer: ['15m'], screen: null, until: null, text: null, sound: null, ...extra }
 }
 
 const names = resolveConfig()
@@ -146,4 +146,11 @@ test('toggle on a break slide starts the break, over a workshop still going', ()
 test('a break of a minute or less starts already warned', () => {
   assert.equal(run(null, 'toggle', slide({ screen: 'break', timer: ['1m'] }), 0)!.warned, true)
   assert.equal(run(null, 'toggle', slide({ screen: 'break', timer: ['15m'] }), 0)!.warned, false)
+})
+
+test('a timer keeps the sound its slide gave it', () => {
+  assert.deepEqual(run(null, 'toggle', slide({ sound: './gong.wav' }), 0)!.sound, { file: './gong.wav' })
+  assert.equal(run(null, 'toggle', slide({ sound: false }), 0)!.sound, null)
+  assert.equal(run(null, 'toggle', slide({ sound: 'not a sound!' }), 0)!.sound, undefined)
+  assert.equal(run(null, 'toggle', slide(), 0)!.sound, undefined)
 })

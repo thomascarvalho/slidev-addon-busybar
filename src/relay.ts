@@ -6,25 +6,19 @@
    one call is in flight at a time (the latest scene replaces pending ones),
    and a missing bar shows up as one log line, not as an error. */
 import type { AudioPlayParams, DisplayClearParams, DisplayDrawParams, RequestOptions, SuccessResponse } from '@busy-app/busy-lib'
-import type { ResolvedConfig } from './config.ts'
+import type { ResolvedConfig, SoundMoment } from './config.ts'
 import type { RenderState } from './render.ts'
+import type { Sound, SoundPlayer } from './sounds.ts'
 import type { TimerAction } from './timer.ts'
 import type { Element, SlideInfo } from './types.ts'
-import { resolveConfig } from './config.ts'
+import { DEFAULT_SOUNDS, resolveConfig } from './config.ts'
 import { render } from './render.ts'
+import { APPLICATION, stockPlayer } from './sounds.ts'
 import { act, remaining, status, WARN_MS } from './timer.ts'
 
-export const APPLICATION = 'slidev'
 const PRIORITY = 50
 export const TIMEOUT_MS = 1500
 const RETRY_MS = 5000
-
-/* Firmware sound played when a timer runs out. `.snd`, not `wav`: the
-   firmware answers OK to a `wav` path but plays nothing. */
-export const DEFAULT_SOUND = 'shared/calendar_reminder_ends.snd'
-/* Firmware sound played when a break has a minute left: short and
-   discreet, the moment people put their coffee down. */
-export const DEFAULT_WARN_SOUND = 'shared/volume_change.snd'
 
 /** What the relay needs from a `BusyBar` client. */
 export interface Bar {
@@ -42,15 +36,13 @@ export interface Log {
 
 export interface RelayOptions {
   now?: () => number
-  /** `stock_path` of the end sound; empty for none. */
-  sound?: string
-  /** `stock_path` of the break's one-minute warning; empty for none. */
-  warnSound?: string
+  /** Resolves sounds to play; stock sounds only by default. */
+  sounds?: SoundPlayer
   config?: ResolvedConfig
 }
 
 export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
-  const { now = Date.now, sound = DEFAULT_SOUND, warnSound = DEFAULT_WARN_SOUND } = options
+  const { now = Date.now, sounds = stockPlayer } = options
   let config = options.config ?? resolveConfig()
   const state: RenderState = { slide: null, timer: null }
   let lastSlide = ''
@@ -83,8 +75,13 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
   }
 
   function timer(action: TimerAction) {
-    state.timer = act(state.timer, action, state.slide, now(), config)
+    const before = state.timer
+    state.timer = act(before, action, state.slide, now(), config)
     log.debug?.(`timer: ${action}`)
+    const after = state.timer
+    /* A new timer, or its next phase: not a resume, not one more minute. */
+    if (after && status(after, now()) === 'running' && (!before || after.phases !== before.phases || after.index !== before.index))
+      play('start')
     void flush()
   }
 
@@ -111,20 +108,23 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
     const s = status(t, now())
     if (t.style && !t.warned && s === 'running' && remaining(t, now()) <= WARN_MS) {
       state.timer = { ...t, warned: true }
-      play(warnSound)
+      play('breakWarning')
     }
     const current = state.timer!
     if (current.rang || (s !== 'finished' && s !== 'waiting'))
       return
     state.timer = { ...current, rang: true }
-    play(sound)
+    play(s === 'waiting' ? 'phaseEnd' : current.style ? 'breakOver' : 'timeUp', current.sound)
   }
 
-  function play(path: string) {
-    if (!path)
+  /** Plays a moment's sound: the timer's own (end moments), else the
+      deck's; the default when a file is not ready. */
+  function play(moment: SoundMoment, own?: Sound) {
+    const params = sounds.resolve(own !== undefined ? own : config.sounds[moment], DEFAULT_SOUNDS[moment])
+    if (!params)
       return
-    bar.AudioPlay({ application_name: APPLICATION, stock_path: path }, { timeout: TIMEOUT_MS })
-      .catch(error => log.debug?.(`sound ${path} not played: ${(error as Error).message}`))
+    bar.AudioPlay(params, { timeout: TIMEOUT_MS })
+      .catch(error => log.debug?.(`sound not played: ${(error as Error).message}`))
   }
 
   async function flush() {

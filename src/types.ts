@@ -21,4 +21,7 @@ export interface SlideInfo {
   screen: string | null
   until: string | null
   text: string | null
+  /** `busy.sound`: the end sound of this slide's timer; `false` silences it,
+      `null` keeps the deck's. */
+  sound: string | false | null
 }

@@ -1,11 +1,14 @@
-import type { Bar } from './relay.ts'
+import type { Bar, RelayOptions } from './relay.ts'
+import type { Sound } from './sounds.ts'
 import type { SlideInfo } from './types.ts'
 import assert from 'node:assert/strict'
 import { mock, test } from 'node:test'
+import { resolveConfig } from './config.ts'
 import { createRelay } from './relay.ts'
+import { stockPlayer } from './sounds.ts'
 
 function slide(no: number, chapter: string | null, extra: Partial<SlideInfo> = {}): SlideInfo {
-  return { no, title: null, chapter, chapterNo: null, progress: null, activity: null, timer: null, screen: null, until: null, text: null, ...extra }
+  return { no, title: null, chapter, chapterNo: null, progress: null, activity: null, timer: null, screen: null, until: null, text: null, sound: null, ...extra }
 }
 
 interface Drawn { id: string, text?: string }
@@ -34,7 +37,7 @@ function fakeBar() {
     },
     async AudioPlay(params) {
       state.sounds++
-      played.push('stock_path' in params ? params.stock_path : '')
+      played.push('stock_path' in params ? params.stock_path : params.path)
       return { result: 'OK' }
     },
   }
@@ -126,10 +129,10 @@ test('a relay that showed nothing clears nothing on exit (slidev export)', async
 })
 
 /* Timers: simulated clock and timers. */
-function timed() {
+function timed(options: Partial<RelayOptions> = {}) {
   let clock = 0
   const fake = fakeBar()
-  const relay = createRelay(fake.bar, fakeLog(), { now: () => clock })
+  const relay = createRelay(fake.bar, fakeLog(), { now: () => clock, ...options })
   return {
     ...fake,
     relay,
@@ -280,5 +283,107 @@ test('each phase ends with the sound, a waiting workshop survives slide changes'
     await fake.advance(1000)
   assert.equal(fake.state.sounds, 2)
   assert.equal(fake.last('title')?.text, 'Time\'s up')
+  await fake.relay.close()
+})
+
+test('each moment plays its own sound from the config', async (t) => {
+  t.after(() => mock.timers.reset())
+  mock.timers.enable({ apis: ['setTimeout'] })
+  const config = resolveConfig({ sounds: { timeUp: 'calendar_event_starts', phaseEnd: 'volume_change', start: 'calendar_reminder_ends' } })
+  const fake = timed({ config })
+  fake.relay.setSlide(slide(4, 'Hooks', { activity: 'Lab', timer: ['1m A', '1m B'] }))
+  fake.relay.timer('toggle')
+  await settle()
+  assert.deepEqual(fake.played, ['shared/calendar_reminder_ends.snd'], 'start')
+  for (let s = 0; s < 62; s++)
+    await fake.advance(1000)
+  assert.deepEqual(fake.played.slice(1), ['shared/volume_change.snd'], 'phase end')
+  fake.relay.timer('toggle')
+  await settle()
+  for (let s = 0; s < 62; s++)
+    await fake.advance(1000)
+  assert.deepEqual(fake.played.slice(2), ['shared/calendar_reminder_ends.snd', 'shared/calendar_event_starts.snd'], 'start of B, then time up')
+  await fake.relay.close()
+})
+
+test('resuming a paused timer does not play the start sound', async (t) => {
+  t.after(() => mock.timers.reset())
+  mock.timers.enable({ apis: ['setTimeout'] })
+  const fake = timed({ config: resolveConfig({ sounds: { start: 'volume_change' } }) })
+  fake.relay.setSlide(workshop)
+  fake.relay.timer('toggle')
+  fake.relay.timer('toggle')
+  fake.relay.timer('toggle')
+  await settle()
+  assert.deepEqual(fake.played, ['shared/volume_change.snd'])
+  await fake.relay.close()
+})
+
+test('a slide\'s sound replaces the end sound only, false silences it', async (t) => {
+  t.after(() => mock.timers.reset())
+  mock.timers.enable({ apis: ['setTimeout'] })
+  const fake = timed()
+  fake.relay.setSlide(slide(6, null, { screen: 'break', timer: ['2m'], sound: 'calendar_event_starts' }))
+  fake.relay.timer('toggle')
+  await settle()
+  for (let s = 0; s < 125; s++)
+    await fake.advance(1000)
+  assert.deepEqual(fake.played, ['shared/volume_change.snd', 'shared/calendar_event_starts.snd'], 'warning unchanged, end replaced')
+
+  const quiet = timed()
+  quiet.relay.setSlide(slide(4, 'Hooks', { activity: 'Quiz', timer: ['1m'], sound: false }))
+  quiet.relay.timer('toggle')
+  await settle()
+  for (let s = 0; s < 62; s++)
+    await quiet.advance(1000)
+  assert.deepEqual(quiet.played, [])
+  await fake.relay.close()
+  await quiet.relay.close()
+})
+
+test('a file sound plays through the player once it is ready', async (t) => {
+  t.after(() => mock.timers.reset())
+  mock.timers.enable({ apis: ['setTimeout'] })
+  const sounds = { resolve: (sound: Sound, fallback: Sound) => sound && 'file' in sound ? { application_name: 'slidev', path: 'sounds/abc.snd' } : stockPlayer.resolve(sound, fallback) }
+  const fake = timed({ sounds, config: resolveConfig({ sounds: { timeUp: './gong.wav' } }) })
+  fake.relay.setSlide(workshop)
+  fake.relay.timer('toggle')
+  await settle()
+  for (let s = 0; s < 125; s++)
+    await fake.advance(1000)
+  assert.deepEqual(fake.played, ['sounds/abc.snd'])
+  await fake.relay.close()
+})
+
+test('a break ending plays sounds.breakOver from the config, not timeUp', async (t) => {
+  t.after(() => mock.timers.reset())
+  mock.timers.enable({ apis: ['setTimeout'] })
+  const config = resolveConfig({ sounds: { breakOver: 'calendar_event_starts' } })
+  const fake = timed({ config })
+  fake.relay.setSlide(slide(6, null, { screen: 'break', timer: ['2m'] }))
+  fake.relay.timer('toggle')
+  await settle()
+  for (let s = 0; s < 125; s++)
+    await fake.advance(1000)
+  assert.deepEqual(fake.played, ['shared/volume_change.snd', 'shared/calendar_event_starts.snd'], 'the warning, then the configured breakOver sound')
+  await fake.relay.close()
+})
+
+test('pressing Start/Stop on a break slide while a workshop runs plays the start sound', async (t) => {
+  t.after(() => mock.timers.reset())
+  mock.timers.enable({ apis: ['setTimeout'] })
+  const fake = timed({ config: resolveConfig({ sounds: { start: 'volume_change' } }) })
+
+  fake.relay.setSlide(workshop)
+  fake.relay.timer('toggle')
+  await settle()
+  await fake.advance(30_000)
+  assert.deepEqual(fake.played, ['shared/volume_change.snd'], 'the workshop starting played it once')
+
+  fake.relay.setSlide(slide(6, null, { screen: 'break', timer: ['15m'] }))
+  await settle()
+  fake.relay.timer('toggle')
+  await settle()
+  assert.deepEqual(fake.played, ['shared/volume_change.snd', 'shared/volume_change.snd'], 'the break starting plays it again')
   await fake.relay.close()
 })

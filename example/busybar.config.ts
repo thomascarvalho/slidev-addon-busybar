@@ -22,6 +22,11 @@ export default defineConfig({
     ok: 'timer:skip',
     okHold: 'overview',
   },
+  /* The end of a break rings the deck's own chime (converted and uploaded
+     by the addon); the other moments keep the bar's sounds. */
+  sounds: {
+    breakOver: './sounds/gong.wav',
+  },
   logos: {
     acme() {
       const word = 'acme'

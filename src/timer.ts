@@ -1,9 +1,11 @@
 /* Activity timers. A timer lives in the relay, independently of the slide:
    going back a few slides during a workshop does not reset it. */
 import type { Labels, ResolvedConfig } from './config.ts'
+import type { Sound } from './sounds.ts'
 import type { SlideInfo } from './types.ts'
 import type { Phase } from './duration.ts'
 import { parsePhases } from './duration.ts'
+import { parseSound } from './sounds.ts'
 
 export interface Timer {
   label: string
@@ -23,6 +25,8 @@ export interface Timer {
   rang: boolean
   /** The one-minute warning of a break has been played. */
   warned: boolean
+  /** End sound given by the slide (`busy.sound`); absent: the deck's. */
+  sound?: Sound
 }
 
 /** `waiting`: a phase is over and the next one waits for the trainer. */
@@ -56,13 +60,16 @@ export function phaseName(timer: { phases: Phase[] }, index: number, labels: Lab
 /** What the current slide offers to start, without starting it. On a
     screen slide, a break: dressed by the screen, named after it, in one
     phase. */
-export function armed(slide: SlideInfo | null, names: Names): { label: string, style: string | null, phases: Phase[] } | null {
+export function armed(slide: SlideInfo | null, names: Names): { label: string, style: string | null, phases: Phase[], sound?: Sound } | null {
   const phases = slide?.timer ? parsePhases(slide.timer) : null
   if (!slide || !phases)
     return null
+  /* An unreadable value keeps the deck's sound. */
+  const own = slide.sound === null ? undefined : parseSound(slide.sound)
+  const sound = own === undefined ? {} : { sound: own }
   if (slide.screen)
-    return { label: slide.text ?? names.screens[slide.screen]?.title ?? slide.screen, style: slide.screen, phases: phases.slice(0, 1) }
-  return { label: slide.activity ?? names.labels.timer, style: null, phases }
+    return { label: slide.text ?? names.screens[slide.screen]?.title ?? slide.screen, style: slide.screen, phases: phases.slice(0, 1), ...sound }
+  return { label: slide.activity ?? names.labels.timer, style: null, phases, ...sound }
 }
 
 /** Starts phase `index`. */

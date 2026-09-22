@@ -6,12 +6,13 @@
      BUSYBAR_ADDR      address of the bar (default 10.0.4.20, over USB)
      BUSYBAR_PASSWORD  HTTP access code of the bar, needed over Wi-Fi
      BUSYBAR_ENABLED   `false` turns the addon off
-     BUSYBAR_SOUND     end-of-timer sound (`stock_path`), empty for none
-     BUSYBAR_WARN_SOUND  a break's one-minute warning (`stock_path`), empty for none
      BUSYBAR_DEBUG     `true` logs every call to the bar
 
    Display settings live in an optional `busybar.config.ts` next to
    `slides.md`, reloaded when it changes.
+
+   Its `sounds` and the slides' `busy.sound` may name WAV files of the deck:
+   they are converted and uploaded to the bar ahead of need (sound-store.ts).
 
    The bar's wheel, buttons and switch come back through its state stream and
    play the actions set in `controls`: the timer is handled here, Slidev
@@ -20,17 +21,20 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin, WebSocketClient } from 'vite'
 import type { BusybarConfig, ControlAction, ResolvedConfig } from './config.ts'
+import type { Sound } from './sounds.ts'
 import type { TimerAction } from './timer.ts'
 import type { SlideInfo } from './types.ts'
 import { existsSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { relative, resolve } from 'node:path'
 import process from 'node:process'
 import { BusyBar } from '@busy-app/busy-lib'
 import { loadConfigFromFile, loadEnv } from 'vite'
 import { resolveConfig } from './config.ts'
 import { buttonAction, route, wheelAction } from './controls.ts'
 import { createControls, SwitchPosition } from './input.ts'
-import { createRelay, DEFAULT_SOUND, DEFAULT_WARN_SOUND, TIMEOUT_MS } from './relay.ts'
+import { createRelay, TIMEOUT_MS } from './relay.ts'
+import { createSoundStore } from './sound-store.ts'
+import { deckFile, invalidSoundMessage, parseSound, STOCK_SOUNDS } from './sounds.ts'
 import { listenToBar } from './stream.ts'
 
 const MAX_BODY = 4096
@@ -65,6 +69,12 @@ export function busybar(): Plugin {
         return
       }
 
+      /* Sounds moved to busybar.config.ts: say where, once. */
+      if (env.BUSYBAR_SOUND !== undefined)
+        log.warn('BUSYBAR_SOUND is no longer used: set sounds.timeUp, sounds.breakOver and sounds.phaseEnd in busybar.config.ts.')
+      if (env.BUSYBAR_WARN_SOUND !== undefined)
+        log.warn('BUSYBAR_WARN_SOUND is no longer used: set sounds.breakWarning in busybar.config.ts.')
+
       const configFile = CONFIG_FILES.map(name => resolve(root, name)).find(existsSync)
       async function loadUserConfig() {
         if (!configFile)
@@ -86,12 +96,33 @@ export function busybar(): Plugin {
 
       const addr = env.BUSYBAR_ADDR || '10.0.4.20'
       const bar = new BusyBar({ addr, HTTPAccessPassword: env.BUSYBAR_PASSWORD || undefined, timeout: TIMEOUT_MS })
-      const relay = createRelay(bar, log, {
-        sound: env.BUSYBAR_SOUND ?? DEFAULT_SOUND,
-        warnSound: env.BUSYBAR_WARN_SOUND ?? DEFAULT_WARN_SOUND,
-        config,
-      })
+      const sounds = createSoundStore(bar, log, { root })
+      const relay = createRelay(bar, log, { sounds, config })
       log.info(`relay to ${addr}${configFile ? `, settings from ${CONFIG_FILES.find(name => configFile.endsWith(name))}` : ''}.`)
+
+      /* The deck's WAV files, watched: an edited file is uploaded again. */
+      const watchedSounds = new Set<string>()
+      function prepareSounds(next: ResolvedConfig) {
+        for (const sound of Object.values(next.sounds)) {
+          sounds.prepare(sound)
+          const full = sound && 'file' in sound ? deckFile(root, sound.file) : null
+          if (full && !watchedSounds.has(full)) {
+            watchedSounds.add(full)
+            server.watcher.add(full)
+          }
+        }
+        void sounds.checkStock(Object.entries(next.sounds).map(([key, sound]): [string, Sound] => [`sounds.${key}`, sound]))
+      }
+      sounds.reset()
+      prepareSounds(config)
+      /* `add` too: a deck WAV created after the "not found" warning is
+         picked up without restarting the server. */
+      function onSoundFile(file: string) {
+        if (watchedSounds.has(resolve(file)))
+          sounds.prepare({ file: relative(root, resolve(file)) })
+      }
+      server.watcher.on('change', onSoundFile)
+      server.watcher.on('add', onSoundFile)
 
       /* Browser windows showing the deck, most recent last. Audience and
          presenter windows sync their slide both ways: if both took a wheel
@@ -160,6 +191,7 @@ export function busybar(): Plugin {
             .then((next) => {
               relay.configure(next)
               syncControls(next)
+              prepareSounds(next)
               log.info('settings reloaded.')
             })
             .catch(error => log.warn(`${configFile}: ${(error as Error).message}. Keeping the previous settings.`))
@@ -184,6 +216,18 @@ export function busybar(): Plugin {
             return reply(res, 400)
           reply(res, 204)
           relay.setSlide(slide)
+          /* Uploaded now, long before its timer can end. An invalid value or
+             an unknown stock name keeps the deck's sound, with a warning: it
+             never blocks the slide. */
+          if (typeof slide.sound === 'string') {
+            const own = parseSound(slide.sound)
+            if (own === undefined)
+              sounds.warnOnce(invalidSoundMessage(slide.sound))
+            else if (own && 'stock' in own && !STOCK_SOUNDS.includes(own.stock))
+              sounds.warnOnce(`busy.sound: no stock sound "${own.stock}" (${STOCK_SOUNDS.join(', ')}).`)
+            else if (own)
+              sounds.prepare(own)
+          }
           return
         }
         if (req.url === '/timer') {
@@ -260,5 +304,6 @@ export function parseSlide(body: Record<string, unknown>): SlideInfo | null {
     screen: str(body.screen),
     until: str(body.until),
     text: str(body.text),
+    sound: body.sound === false ? false : str(body.sound),
   }
 }

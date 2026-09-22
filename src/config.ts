@@ -1,6 +1,8 @@
 /* Addon configuration: an optional `busybar.config.ts` next to `slides.md`.
    Everything has a default. */
+import type { Sound } from './sounds.ts'
 import type { Element } from './types.ts'
+import { parseSound } from './sounds.ts'
 
 export interface ScreenStyle {
   /** Text shown on the bar; `busy.text` on the slide overrides it. */
@@ -49,6 +51,9 @@ export interface Controls {
   switch: boolean
 }
 
+/** When the bar plays a sound. */
+export type SoundMoment = 'timeUp' | 'breakOver' | 'breakWarning' | 'phaseEnd' | 'start'
+
 export interface BusybarConfig {
   /** Language of the default texts: `en` (default) or `fr`. */
   locale?: Locale
@@ -63,6 +68,9 @@ export interface BusybarConfig {
   /** What the bar's wheel, buttons and switch do, merged with the defaults;
       `false` stops listening to the bar. */
   controls?: Partial<Controls> | false
+  /** The sound of each moment: a stock sound name (`'volume_change'`), a
+      WAV file of the deck (`'./sounds/gong.wav'`) or `false`. */
+  sounds?: Partial<Record<SoundMoment, string | false>>
 }
 
 export interface ResolvedConfig {
@@ -72,6 +80,7 @@ export interface ResolvedConfig {
   logos: Record<string, () => Element[]>
   /** `null` when turned off. */
   controls: Controls | null
+  sounds: Record<SoundMoment, Sound>
 }
 
 /** Identity function, for autocompletion in `busybar.config.ts`. */
@@ -99,6 +108,27 @@ export const DEFAULT_CONTROLS: Controls = {
   ok: false,
   okHold: false,
   switch: true,
+}
+
+export const DEFAULT_SOUNDS: Record<SoundMoment, Sound> = {
+  timeUp: { stock: 'calendar_reminder_ends' },
+  breakOver: { stock: 'calendar_reminder_ends' },
+  breakWarning: { stock: 'volume_change' },
+  phaseEnd: { stock: 'calendar_reminder_ends' },
+  start: null,
+}
+
+function resolveSounds(config: BusybarConfig['sounds']): Record<SoundMoment, Sound> {
+  const sounds = { ...DEFAULT_SOUNDS }
+  for (const [key, value] of Object.entries(config ?? {})) {
+    if (!(key in DEFAULT_SOUNDS))
+      throw new Error(`[busybar] sounds.${key}: unknown moment (timeUp, breakOver, breakWarning, phaseEnd, start)`)
+    const sound = parseSound(value)
+    if (sound === undefined)
+      throw new Error(`[busybar] sounds.${key}: "${value}" is not a stock sound name, a .wav file or false`)
+    sounds[key as SoundMoment] = sound
+  }
+  return sounds
 }
 
 const ACTIONS = new Set(['next', 'prev', 'nextSlide', 'prevSlide', 'first', 'last', 'overview', 'dark', 'timer:toggle', 'timer:add', 'timer:skip', 'timer:cancel'])
@@ -158,5 +188,6 @@ export function resolveConfig(config: BusybarConfig = {}): ResolvedConfig {
     screens,
     logos: config.logos ?? {},
     controls: resolveControls(config.controls),
+    sounds: resolveSounds(config.sounds),
   }
 }

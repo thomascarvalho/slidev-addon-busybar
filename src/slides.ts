@@ -10,6 +10,7 @@ export interface BusyFrontmatter {
   screen?: unknown
   until?: unknown
   text?: unknown
+  sound?: unknown
 }
 
 function str(value: unknown): string | null {
@@ -66,5 +67,6 @@ export function slideInfo(busy: (BusyFrontmatter | undefined)[], current: number
     screen: str(own.screen),
     until: str(own.until),
     text: str(own.text),
+    sound: own.sound === false ? false : str(own.sound),
   }
 }

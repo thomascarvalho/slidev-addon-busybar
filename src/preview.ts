@@ -25,7 +25,7 @@ const APPLICATION = 'slidev-preview'
 const bar = new BusyBar({ addr: process.env.BUSYBAR_ADDR, HTTPAccessPassword: process.env.BUSYBAR_PASSWORD, timeout: 6000 })
 const config = resolveConfig({ logos: { box: () => [rect('logo', 20, 2, 32, 12, '#FF8FB1')] } })
 const now = Date.now()
-const slide = (extra: Partial<SlideInfo>): SlideInfo => ({ no: 1, title: null, chapter: 'Hooks', chapterNo: 1, progress: { index: 2, count: 5 }, activity: null, timer: null, screen: null, until: null, text: null, ...extra })
+const slide = (extra: Partial<SlideInfo>): SlideInfo => ({ no: 1, title: null, chapter: 'Hooks', chapterNo: 1, progress: { index: 2, count: 5 }, activity: null, timer: null, screen: null, until: null, text: null, sound: null, ...extra })
 const timer = (leftMs: number, running = true): Timer => ({ label: 'Workshop 1', style: null, phases: [{ label: null, ms: 15 * 60_000 }], index: 0, totalMs: 15 * 60_000, endsAt: running ? now + leftMs : null, leftMs, rang: false, warned: false })
 const lab = (index: number, endsAt: number | null): Timer => ({ ...timer(0), label: 'Lab', phases: [{ label: 'Reading', ms: 300_000 }, { label: 'Coding', ms: 600_000 }, { label: 'Sharing', ms: 300_000 }], index, totalMs: [300_000, 600_000, 300_000][index], endsAt, leftMs: 0 })
 
