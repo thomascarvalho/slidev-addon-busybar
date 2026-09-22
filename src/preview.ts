@@ -26,7 +26,7 @@ const bar = new BusyBar({ addr: process.env.BUSYBAR_ADDR, HTTPAccessPassword: pr
 const config = resolveConfig({ logos: { box: () => [rect('logo', 20, 2, 32, 12, '#FF8FB1')] } })
 const now = Date.now()
 const slide = (extra: Partial<SlideInfo>): SlideInfo => ({ no: 1, title: null, chapter: 'Hooks', chapterNo: 1, progress: { index: 2, count: 5 }, activity: null, timer: null, screen: null, until: null, text: null, ...extra })
-const timer = (leftMs: number, running = true): Timer => ({ label: 'Workshop 1', totalMs: 15 * 60_000, endsAt: running ? now + leftMs : null, leftMs, rang: false })
+const timer = (leftMs: number, running = true): Timer => ({ label: 'Workshop 1', style: null, totalMs: 15 * 60_000, endsAt: running ? now + leftMs : null, leftMs, rang: false, warned: false })
 
 const states: Record<string, RenderState> = {
   'chapter': { slide: slide({}), timer: null },
@@ -43,10 +43,14 @@ const states: Record<string, RenderState> = {
   'timer-red': { slide: null, timer: timer(42_000) },
   'timer-paused': { slide: null, timer: timer(754_000, false) },
   'time-up': { slide: null, timer: timer(-5000) },
+  'break-ready': { slide: slide({ screen: 'break', timer: '15m' }), timer: null },
+  'break-running': { slide: slide({ screen: 'break', timer: '15m' }), timer: { ...timer(754_000), label: 'Break', style: 'break' } },
+  'break-last-minute': { slide: null, timer: { ...timer(42_000), label: 'Break', style: 'break' } },
+  'break-over': { slide: null, timer: { ...timer(-5000), label: 'Break', style: 'break' } },
 }
 
-/* "Time's up" captured while lit. */
-const at = (name: string) => name === 'time-up' ? now - (now % 1000) : now
+/* "Time's up" and "Break's over!" captured while lit. */
+const at = (name: string) => name === 'time-up' || name === 'break-over' ? now - (now % 1000) : now
 
 function png(px: Uint8Array, file: string) {
   const W = 72

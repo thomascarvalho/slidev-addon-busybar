@@ -15,6 +15,7 @@ function fakeBar() {
   const calls: string[] = []
   const drawn: Drawn[] = []
   const leds: (string | undefined)[] = []
+  const played: string[] = []
   const state = { fail: null as null | { status?: number, name?: string, message: string }, sounds: 0 }
   const bar: Bar = {
     async DisplayDraw(params) {
@@ -31,13 +32,14 @@ function fakeBar() {
       calls.push(params?.element_ids ? `clear ${params.element_ids.join(',')}` : 'clear all')
       return { result: 'OK' }
     },
-    async AudioPlay() {
+    async AudioPlay(params) {
       state.sounds++
+      played.push('stock_path' in params ? params.stock_path : '')
       return { result: 'OK' }
     },
   }
   const last = (id: string) => drawn.findLast(e => e.id === id)
-  return { bar, calls, leds, state, last }
+  return { bar, calls, leds, played, state, last }
 }
 
 function fakeLog() {
@@ -201,4 +203,36 @@ test('an element that changes kind is cleared before being drawn again', async (
   assert.ok(turn > 0, calls.join(' | '))
   assert.match(calls[turn + 1], /^draw .*fill/)
   await relay.close()
+})
+
+test('a break warns once in its last minute, then rings at zero', async (t) => {
+  t.after(() => mock.timers.reset())
+  mock.timers.enable({ apis: ['setTimeout'] })
+  const fake = timed()
+  fake.relay.setSlide(slide(6, null, { screen: 'break', timer: '2m' }))
+  fake.relay.timer('toggle')
+  await settle()
+  for (let s = 0; s < 58; s++)
+    await fake.advance(1000)
+  assert.deepEqual(fake.played, [], 'not yet')
+  for (let s = 0; s < 5; s++)
+    await fake.advance(1000)
+  assert.deepEqual(fake.played, ['shared/volume_change.wav'])
+  for (let s = 0; s < 62; s++)
+    await fake.advance(1000)
+  assert.deepEqual(fake.played, ['shared/volume_change.wav', 'shared/calendar_reminder_ends.wav'])
+  await fake.relay.close()
+})
+
+test('an activity never warns', async (t) => {
+  t.after(() => mock.timers.reset())
+  mock.timers.enable({ apis: ['setTimeout'] })
+  const fake = timed()
+  fake.relay.setSlide(workshop)
+  fake.relay.timer('toggle')
+  await settle()
+  for (let s = 0; s < 125; s++)
+    await fake.advance(1000)
+  assert.deepEqual(fake.played, ['shared/calendar_reminder_ends.wav'])
+  await fake.relay.close()
 })

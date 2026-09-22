@@ -14,6 +14,8 @@ export interface ScreenStyle {
 export interface Labels {
   /** Shown when a timer runs out. */
   timeUp: string
+  /** Shown when a break runs out. */
+  breakOver: string
   /** Name of a timer whose slide has no `busy.activity`. */
   timer: string
 }
@@ -75,11 +77,11 @@ export function defineConfig(config: BusybarConfig): BusybarConfig {
 
 const LOCALES: Record<Locale, { labels: Labels, screens: Record<'break' | 'questions' | 'welcome', string> }> = {
   en: {
-    labels: { timeUp: 'Time\'s up', timer: 'Timer' },
+    labels: { timeUp: 'Time\'s up', breakOver: 'Break\'s over!', timer: 'Timer' },
     screens: { break: 'Break', questions: 'Questions?', welcome: 'Welcome!' },
   },
   fr: {
-    labels: { timeUp: 'Temps écoulé', timer: 'Chrono' },
+    labels: { timeUp: 'Temps écoulé', breakOver: 'On reprend !', timer: 'Chrono' },
     screens: { break: 'Pause', questions: 'Questions ?', welcome: 'Bienvenue !' },
   },
 }

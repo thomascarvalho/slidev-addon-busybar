@@ -62,10 +62,13 @@ cancel.
 ---
 busy:
   screen: break
-  until: "10:45"
+  timer: 15m
 ---
 
 # Break
+
+Press Start/Stop on the bar (or `b`): the bar counts down and calls
+everyone back.
 
 ---
 layout: section

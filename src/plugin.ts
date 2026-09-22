@@ -7,6 +7,7 @@
      BUSYBAR_PASSWORD  HTTP access code of the bar, needed over Wi-Fi
      BUSYBAR_ENABLED   `false` turns the addon off
      BUSYBAR_SOUND     end-of-timer sound (`stock_path`), empty for none
+     BUSYBAR_WARN_SOUND  a break's one-minute warning (`stock_path`), empty for none
      BUSYBAR_DEBUG     `true` logs every call to the bar
 
    Display settings live in an optional `busybar.config.ts` next to
@@ -29,7 +30,7 @@ import { loadConfigFromFile, loadEnv } from 'vite'
 import { resolveConfig } from './config.ts'
 import { buttonAction, route, wheelAction } from './controls.ts'
 import { createControls, SwitchPosition } from './input.ts'
-import { createRelay, DEFAULT_SOUND, TIMEOUT_MS } from './relay.ts'
+import { createRelay, DEFAULT_SOUND, DEFAULT_WARN_SOUND, TIMEOUT_MS } from './relay.ts'
 import { listenToBar } from './stream.ts'
 
 const MAX_BODY = 4096
@@ -85,7 +86,11 @@ export function busybar(): Plugin {
 
       const addr = env.BUSYBAR_ADDR || '10.0.4.20'
       const bar = new BusyBar({ addr, HTTPAccessPassword: env.BUSYBAR_PASSWORD || undefined, timeout: TIMEOUT_MS })
-      const relay = createRelay(bar, log, { sound: env.BUSYBAR_SOUND ?? DEFAULT_SOUND, config })
+      const relay = createRelay(bar, log, {
+        sound: env.BUSYBAR_SOUND ?? DEFAULT_SOUND,
+        warnSound: env.BUSYBAR_WARN_SOUND ?? DEFAULT_WARN_SOUND,
+        config,
+      })
       log.info(`relay to ${addr}${configFile ? `, settings from ${CONFIG_FILES.find(name => configFile.endsWith(name))}` : ''}.`)
 
       /* Browser windows showing the deck, most recent last. Audience and

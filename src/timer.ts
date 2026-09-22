@@ -1,10 +1,13 @@
 /* Activity timers. A timer lives in the relay, independently of the slide:
    going back a few slides during a workshop does not reset it. */
+import type { ResolvedConfig } from './config.ts'
 import type { SlideInfo } from './types.ts'
 import { parseDuration } from './duration.ts'
 
 export interface Timer {
   label: string
+  /** Screen that dresses the timer (a break), `null` for an activity. */
+  style: string | null
   totalMs: number
   /** When it ends while running, `null` while paused. */
   endsAt: number | null
@@ -12,11 +15,19 @@ export interface Timer {
   leftMs: number
   /** The end sound has been played. */
   rang: boolean
+  /** The one-minute warning of a break has been played. */
+  warned: boolean
 }
 
 export type Status = 'running' | 'paused' | 'finished'
 
 export type TimerAction = 'toggle' | 'cancel' | 'add'
+
+/** What names a timer: the default activity name and the screens. */
+export type Names = Pick<ResolvedConfig, 'labels' | 'screens'>
+
+/** A break warns when this much time is left. */
+export const WARN_MS = 60_000
 
 const MINUTE = 60_000
 
@@ -30,12 +41,15 @@ export function status(timer: Timer, now: number): Status {
   return timer.endsAt === null ? 'paused' : 'running'
 }
 
-/** The activity the current slide offers to start, without starting it. */
-export function armed(slide: SlideInfo | null, defaultLabel: string): { label: string, totalMs: number } | null {
+/** What the current slide offers to start, without starting it. On a
+    screen slide, a break: dressed by the screen and named after it. */
+export function armed(slide: SlideInfo | null, names: Names): { label: string, style: string | null, totalMs: number } | null {
   const totalMs = slide?.timer ? parseDuration(slide.timer) : null
-  if (!totalMs)
+  if (!slide || !totalMs)
     return null
-  return { label: slide?.activity ?? defaultLabel, totalMs }
+  if (slide.screen)
+    return { label: slide.text ?? names.screens[slide.screen]?.title ?? slide.screen, style: slide.screen, totalMs }
+  return { label: slide.activity ?? names.labels.timer, style: null, totalMs }
 }
 
 /**
@@ -44,21 +58,23 @@ export function armed(slide: SlideInfo | null, defaultLabel: string): { label: s
  * - `add`: one more minute, including to a finished timer.
  * - `cancel`: drops the timer.
  */
-export function act(timer: Timer | null, action: TimerAction, slide: SlideInfo | null, now: number, defaultLabel: string): Timer | null {
+export function act(timer: Timer | null, action: TimerAction, slide: SlideInfo | null, now: number, names: Names): Timer | null {
   if (action === 'cancel')
     return null
 
   if (!timer) {
-    const next = action === 'toggle' ? armed(slide, defaultLabel) : null
-    return next && { ...next, endsAt: now + next.totalMs, leftMs: 0, rang: false }
+    const next = action === 'toggle' ? armed(slide, names) : null
+    return next && { ...next, endsAt: now + next.totalMs, leftMs: 0, rang: false, warned: false }
   }
 
   const left = remaining(timer, now)
   if (action === 'add') {
     const base = Math.max(0, left)
+    /* The warning plays again only if the minute brings it back above. */
+    const warned = base + MINUTE <= WARN_MS
     return timer.endsAt === null && left > 0
-      ? { ...timer, totalMs: timer.totalMs + MINUTE, leftMs: base + MINUTE }
-      : { ...timer, totalMs: timer.totalMs + MINUTE, endsAt: now + base + MINUTE, rang: false }
+      ? { ...timer, totalMs: timer.totalMs + MINUTE, leftMs: base + MINUTE, warned }
+      : { ...timer, totalMs: timer.totalMs + MINUTE, endsAt: now + base + MINUTE, rang: false, warned }
   }
 
   switch (status(timer, now)) {

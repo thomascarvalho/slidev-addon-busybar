@@ -11,7 +11,7 @@ import { resolveConfig } from './config.ts'
 import { SCREEN, textWidth } from './draw.ts'
 import { formatClock } from './duration.ts'
 import { toDeviceText } from './text.ts'
-import { armed, remaining, status } from './timer.ts'
+import { armed, remaining, status, WARN_MS } from './timer.ts'
 
 export interface Scene {
   elements: Element[]
@@ -31,7 +31,6 @@ const GREY = '#8A8A8AFF'
 const GREEN = '#3CD070FF'
 const ORANGE = '#FFA000FF'
 const RED = '#FF3030FF'
-const DIM_RED = '#401010FF'
 const TRACK = '#2A1C1AFF'
 
 /* Firmware images, in `/ext/apps_assets/shared/images/`. */
@@ -120,40 +119,53 @@ function spectrum(ratio: number): string {
 /** Label on the left, time on the right: the same layout for an activity to
     start, a running timer and a paused one. The hourglass precedes the label
     only if there is room: a scrolling label reads worse than no hourglass. */
-function timerLayout(label: string, value: string, color: string, labelColor: string, widest: string, running: boolean): Element[] {
+function timerLayout(label: string, value: string, color: string, labelColor: string, widest: string, running: boolean, style?: ScreenStyle): Element[] {
+  /* The screen's icon names the break itself, so it is always drawn; the
+     hourglass is mere decoration, dropped when there is no room for it. */
+  if (style?.icon)
+    return [icon(style.icon, 0, 0, running ? 100 : 35), ...labelled(label, value, color, labelColor, widest, ICON_SIZE + 1)]
   const left = HOURGLASS.width + HOURGLASS.gap
   if (textWidth(toDeviceText(label), FONT) > labelWidth(widest, 'large', left))
     return labelled(label, value, color, labelColor, widest)
   return [icon('hourglass_5x5', 0, HOURGLASS.y, running ? 100 : 35), ...labelled(label, value, color, labelColor, widest, left)]
 }
 
+/** The style of a screen; an unknown screen is its name, in white. */
+function styleOf(screen: string, config: ResolvedConfig): ScreenStyle {
+  return config.screens[screen] ?? { title: screen, color: WHITE }
+}
+
 function renderTimer(timer: Timer, now: number, config: ResolvedConfig): Scene {
   const left = remaining(timer, now)
   const widest = formatClock(timer.totalMs)
+  const style = timer.style ? styleOf(timer.style, config) : undefined
   switch (status(timer, now)) {
     case 'running': {
       const ratio = left / timer.totalMs
-      return {
-        elements: [
-          ...timerLayout(timer.label, formatClock(left), countdownColor(timer, left), WHITE, widest, true),
-          /* The fill shows what is left of the red → green spectrum. */
-          ...bar(ratio, [RED, spectrum(ratio)]),
-        ],
-        /* Right after the displayed second changes. */
-        nextAt: now + (left % 1000 || 1000) + 5,
-      }
+      /* A break stays calm: white digits, orange in the last minute, the
+         row drains in its colour. */
+      const elements = style
+        ? [...timerLayout(timer.label, formatClock(left), left <= WARN_MS ? ORANGE : WHITE, style.color, widest, true, style), ...bar(ratio, style.color)]
+        : [
+            ...timerLayout(timer.label, formatClock(left), countdownColor(timer, left), WHITE, widest, true),
+            /* The fill shows what is left of the red → green spectrum. */
+            ...bar(ratio, [RED, spectrum(ratio)]),
+          ]
+      /* Right after the displayed second changes. */
+      return { elements, nextAt: now + (left % 1000 || 1000) + 5 }
     }
     case 'paused':
       return {
-        elements: [...timerLayout(timer.label, formatClock(left), GREY, GREY, widest, false), ...bar(left / timer.totalMs, GREY)],
+        elements: [...timerLayout(timer.label, formatClock(left), GREY, GREY, widest, false, style), ...bar(left / timer.totalMs, GREY)],
         nextAt: null,
       }
     case 'finished': {
-      const color = Math.floor(now / BLINK_MS) % 2 === 0 ? RED : DIM_RED
+      const lit = style?.color ?? RED
+      const color = Math.floor(now / BLINK_MS) % 2 === 0 ? lit : mix(lit, '#000000FF', 0.75)
       return {
-        elements: [text('title', config.labels.timeUp, color), ...bar(1, color)],
+        elements: [text('title', style ? config.labels.breakOver : config.labels.timeUp, color), ...bar(1, color)],
         nextAt: now + BLINK_MS - (now % BLINK_MS),
-        led: RED,
+        led: lit,
       }
     }
   }
@@ -178,21 +190,32 @@ function renderScreen(slide: SlideInfo, screen: string, config: ResolvedConfig):
   return { elements: [...elements, ...bar(1, style.color)], nextAt: null }
 }
 
-/* By priority: finished timer (it must be seen), special screen, running
-   timer, activity to start, chapter. */
+/* By priority: finished timer (it must be seen), break over its own
+   screen, special screen, running timer, activity or break to start,
+   chapter. */
 export function render(state: RenderState, now: number, config: ResolvedConfig = resolveConfig()): Scene {
   const slide = state.slide
   const timer = state.timer
   if (timer && status(timer, now) === 'finished')
     return renderTimer(timer, now, config)
   if (slide?.screen) {
+    if (timer?.style === slide.screen)
+      return renderTimer(timer, now, config)
+    const ready = timer ? null : armed(slide, config)
+    if (ready) {
+      const style = styleOf(slide.screen, config)
+      const value = formatClock(ready.totalMs)
+      /* A break ready to start shows its screen as it is, at full opacity,
+         unlike the dimmed hourglass of a plain activity to start. */
+      return { elements: [...timerLayout(ready.label, value, WHITE, style.color, value, true, style), ...bar(0, style.color)], nextAt: null }
+    }
     /* A timer running behind the screen must take over when it ends. */
     return { ...renderScreen(slide, slide.screen, config), nextAt: timer?.endsAt ?? null }
   }
   if (timer)
     return renderTimer(timer, now, config)
 
-  const activity = armed(slide, config.labels.timer)
+  const activity = armed(slide, config)
   if (activity) {
     const value = formatClock(activity.totalMs)
     return { elements: [...timerLayout(activity.label, value, WHITE, WHITE, value, false), ...bar(0, WHITE)], nextAt: null }

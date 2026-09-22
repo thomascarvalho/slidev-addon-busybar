@@ -74,6 +74,7 @@ addons:
    | `BUSYBAR_PASSWORD` | HTTP access code of the bar |
    | `BUSYBAR_ENABLED` | `false` turns the addon off |
    | `BUSYBAR_SOUND` | end-of-timer sound; empty for none. Default: `shared/calendar_reminder_ends.wav` |
+   | `BUSYBAR_WARN_SOUND` | a break's one-minute warning; empty for none. Default: `shared/volume_change.wav` |
    | `BUSYBAR_DEBUG` | `true` logs every call to the bar |
 
 4. Run `slidev`: the console shows `[busybar] relay to …`.
@@ -123,6 +124,22 @@ status LED. Changing slide or pressing `b` dismisses it.
 **A special screen**: `break`, `questions` or `welcome`, each with its icon and
 colour, or the name of one of your [logos](#logos). `until` adds the resume
 time, `text` replaces the title; any other name is shown as is.
+
+**A break** is a screen with a `timer`: the bar shows its icon and length,
+and counts down once you start it, like an activity. The last minute turns
+orange with a discreet sound; at zero, "Break's over!" blinks in the break's
+colour with the end sound. The countdown stays on the bar when you move on to
+the next slide.
+
+```yaml
+---
+busy:
+  screen: break
+  timer: 15m
+---
+```
+
+Without `timer`, the screen only shows the resume time:
 
 ```yaml
 ---
@@ -210,7 +227,7 @@ import { defineConfig } from 'slidev-addon-busybar'
 
 export default defineConfig({
   locale: 'fr', // 'en' (default) or 'fr'
-  labels: { timeUp: 'Terminé !' },
+  labels: { timeUp: 'Terminé !', breakOver: 'Au travail !' },
   controls: { ok: 'overview' }, // the bar's controls, see "From the bar"
   chapterColors: ['#D3A5AA', '#7BBADD', '#B25043'],
   screens: {
@@ -285,6 +302,8 @@ Tested on firmware 1.2.4 (API 27.5.0). None of it is in the official docs:
   drawn over rectangles with a higher `z_index`.
 - Firmware images and animations are addressed as
   `shared/images/<name>.image` and `shared/animations/<name>.anim`.
+- The firmware 1.2.4 ships three sounds: `calendar_event_starts`,
+  `calendar_reminder_ends` and `volume_change` (`shared/<name>.wav`).
 - `led_notification_color` on a draw blinks the status LED; the next draw
   without it stops it.
 - Buttons, wheel and switch come on the WebSocket `/api/status/ws`

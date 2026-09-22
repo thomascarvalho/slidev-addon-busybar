@@ -12,7 +12,7 @@ import type { TimerAction } from './timer.ts'
 import type { Element, SlideInfo } from './types.ts'
 import { resolveConfig } from './config.ts'
 import { render } from './render.ts'
-import { act, status } from './timer.ts'
+import { act, remaining, status, WARN_MS } from './timer.ts'
 
 export const APPLICATION = 'slidev'
 const PRIORITY = 50
@@ -21,6 +21,9 @@ const RETRY_MS = 5000
 
 /* Firmware sound played when a timer runs out. */
 export const DEFAULT_SOUND = 'shared/calendar_reminder_ends.wav'
+/* Firmware sound played when a break has a minute left: short and
+   discreet, the moment people put their coffee down. */
+export const DEFAULT_WARN_SOUND = 'shared/volume_change.wav'
 
 /** What the relay needs from a `BusyBar` client. */
 export interface Bar {
@@ -40,11 +43,13 @@ export interface RelayOptions {
   now?: () => number
   /** `stock_path` of the end sound; empty for none. */
   sound?: string
+  /** `stock_path` of the break's one-minute warning; empty for none. */
+  warnSound?: string
   config?: ResolvedConfig
 }
 
 export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
-  const { now = Date.now, sound = DEFAULT_SOUND } = options
+  const { now = Date.now, sound = DEFAULT_SOUND, warnSound = DEFAULT_WARN_SOUND } = options
   let config = options.config ?? resolveConfig()
   const state: RenderState = { slide: null, timer: null }
   let lastSlide = ''
@@ -77,7 +82,7 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
   }
 
   function timer(action: TimerAction) {
-    state.timer = act(state.timer, action, state.slide, now(), config.labels.timer)
+    state.timer = act(state.timer, action, state.slide, now(), config)
     log.debug?.(`timer: ${action}`)
     void flush()
   }
@@ -96,16 +101,29 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
     void flush()
   }
 
-  /** Plays the end sound once per timer, without waiting for the bar. */
+  /** Plays a break's warning once, then the end sound once per timer,
+      without waiting for the bar. */
   function ring() {
     const t = state.timer
-    if (!t || t.rang || status(t, now()) !== 'finished')
+    if (!t)
       return
-    state.timer = { ...t, rang: true }
-    if (sound) {
-      bar.AudioPlay({ application_name: APPLICATION, stock_path: sound }, { timeout: TIMEOUT_MS })
-        .catch(error => log.debug?.(`end sound not played: ${(error as Error).message}`))
+    const s = status(t, now())
+    if (t.style && !t.warned && s === 'running' && remaining(t, now()) <= WARN_MS) {
+      state.timer = { ...t, warned: true }
+      play(warnSound)
     }
+    const current = state.timer!
+    if (current.rang || s !== 'finished')
+      return
+    state.timer = { ...current, rang: true }
+    play(sound)
+  }
+
+  function play(path: string) {
+    if (!path)
+      return
+    bar.AudioPlay({ application_name: APPLICATION, stock_path: path }, { timeout: TIMEOUT_MS })
+      .catch(error => log.debug?.(`sound ${path} not played: ${(error as Error).message}`))
   }
 
   async function flush() {

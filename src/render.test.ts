@@ -13,7 +13,7 @@ function slide(extra: Partial<SlideInfo>): SlideInfo {
 }
 
 function running(leftMs: number, now = 0): Timer {
-  return { label: 'Workshop 1', totalMs: 15 * MIN, endsAt: now + leftMs, leftMs: 0, rang: false }
+  return { label: 'Workshop 1', style: null, totalMs: 15 * MIN, endsAt: now + leftMs, leftMs: 0, rang: false, warned: false }
 }
 
 const byId = (elements: { id: string }[], id: string) => elements.find(e => e.id === id) as Record<string, unknown> | undefined
@@ -132,6 +132,50 @@ test('a screen wins over a running timer, not over its end', () => {
 
   const done = render({ slide: brk, timer: running(5 * MIN, 0) }, 5 * MIN)
   assert.equal(byId(done.elements, 'title')!.text, 'Time\'s up')
+})
+
+const brk = (extra: Partial<Timer> = {}): Timer => ({ ...running(10 * MIN), label: 'Break', style: 'break', ...extra })
+
+test('a break to start: icon, name, length in white, empty row', () => {
+  const scene = render({ slide: slide({ screen: 'break', timer: '15m' }), timer: null }, 0)
+  assert.match(String(byId(scene.elements, 'icon')!.stock_path), /dt_coffee/)
+  assert.equal(byId(scene.elements, 'label')!.text, 'Break')
+  assert.equal(byId(scene.elements, 'value')!.text, '15:00')
+  assert.equal(byId(scene.elements, 'value')!.color, '#FFFFFFFF')
+  assert.equal(byId(scene.elements, 'fill'), undefined)
+})
+
+test('a running break is shown over its own screen, in its colours', () => {
+  const scene = render({ slide: slide({ screen: 'break', timer: '15m' }), timer: brk() }, 0)
+  assert.match(String(byId(scene.elements, 'icon')!.stock_path), /dt_coffee/)
+  assert.equal(byId(scene.elements, 'value')!.text, '10:00')
+  assert.equal(byId(scene.elements, 'value')!.color, '#FFFFFFFF')
+  assert.equal(byId(scene.elements, 'label')!.color, '#FFB454FF')
+  assert.deepEqual(byId(scene.elements, 'fill')!.fill_colors, ['#FFB454FF'])
+  const last = render({ slide: null, timer: brk({ endsAt: 59_000 }) }, 0)
+  assert.equal(byId(last.elements, 'value')!.color, '#FFA000FF', 'orange in the last minute')
+})
+
+test('a paused break: grey, with its icon', () => {
+  const scene = render({ slide: null, timer: brk({ endsAt: null, leftMs: 754_000 }) }, 0)
+  assert.match(String(byId(scene.elements, 'icon')!.stock_path), /dt_coffee/)
+  assert.equal(byId(scene.elements, 'icon')!.opacity, 35)
+  assert.equal(byId(scene.elements, 'value')!.text, '12:34')
+  assert.equal(byId(scene.elements, 'value')!.color, '#8A8A8AFF')
+  assert.equal(byId(scene.elements, 'label')!.color, '#8A8A8AFF')
+  assert.equal(scene.nextAt, null)
+})
+
+test('another screen still wins over a running break', () => {
+  const scene = render({ slide: slide({ screen: 'questions' }), timer: brk() }, 0)
+  assert.equal(byId(scene.elements, 'title')!.text, 'Questions?')
+})
+
+test('the end of a break calls people back, in its colour', () => {
+  const on = render({ slide: null, timer: brk({ endsAt: 0 }) }, 0, resolveConfig({ locale: 'fr' }))
+  assert.equal(byId(on.elements, 'title')!.text, 'On reprend !')
+  assert.equal(byId(on.elements, 'title')!.color, '#FFB454FF')
+  assert.equal(on.led, '#FFB454FF')
 })
 
 test('logos from the configuration are drawn as returned', () => {

@@ -4,9 +4,11 @@ import { resolveConfig, toBarColor } from './config.ts'
 
 test('English by default, French on request', () => {
   assert.equal(resolveConfig().labels.timeUp, 'Time\'s up')
+  assert.equal(resolveConfig().labels.breakOver, 'Break\'s over!')
   assert.equal(resolveConfig().screens.break.title, 'Break')
   const fr = resolveConfig({ locale: 'fr' })
   assert.equal(fr.labels.timeUp, 'Temps écoulé')
+  assert.equal(fr.labels.breakOver, 'On reprend !')
   assert.equal(fr.screens.questions.title, 'Questions ?')
 })
 

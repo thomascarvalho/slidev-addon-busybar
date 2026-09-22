@@ -1,6 +1,7 @@
 import type { SlideInfo } from './types.ts'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { resolveConfig } from './config.ts'
 import { act, remaining, status } from './timer.ts'
 
 const MIN = 60_000
@@ -9,8 +10,9 @@ function slide(extra: Partial<SlideInfo> = {}): SlideInfo {
   return { no: 4, title: null, chapter: 'Hooks', chapterNo: 1, progress: null, activity: 'Workshop 1', timer: '15m', screen: null, until: null, text: null, ...extra }
 }
 
+const names = resolveConfig()
 const run = (timer: Parameters<typeof act>[0], action: Parameters<typeof act>[1], s: SlideInfo | null, now: number) =>
-  act(timer, action, s, now, 'Timer')
+  act(timer, action, s, now, names)
 
 test('starts the slide\'s activity, only when asked', () => {
   const t = run(null, 'toggle', slide(), 0)!
@@ -59,4 +61,18 @@ test('toggle acknowledges a finished timer, cancel drops it', () => {
 
 test('uses the default label when the activity has no name', () => {
   assert.equal(run(null, 'toggle', slide({ activity: null }), 0)!.label, 'Timer')
+})
+
+test('a timer started on a screen is dressed by it and named after it', () => {
+  const t = run(null, 'toggle', slide({ screen: 'break', activity: 'ignored' }), 0)!
+  assert.equal(t.style, 'break')
+  assert.equal(t.label, 'Break')
+  assert.equal(run(null, 'toggle', slide({ screen: 'break', text: 'Coffee' }), 0)!.label, 'Coffee')
+  assert.equal(run(null, 'toggle', slide(), 0)!.style, null)
+})
+
+test('one more minute re-arms the break warning only above a minute', () => {
+  const t = { ...run(null, 'toggle', slide({ screen: 'break' }), 0)!, warned: true }
+  assert.equal(run(t, 'add', null, 14 * MIN)!.warned, false, '2 min left: warn again later')
+  assert.equal(run(t, 'add', null, 15 * MIN)!.warned, true, 'at zero: 1 min left, no warning right away')
 })
