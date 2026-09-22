@@ -1,6 +1,6 @@
 {
   "name": "slidev-addon-busybar",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Drive a BUSY Bar from your Slidev deck: current chapter and progress, workshop timers, break and Q&A screens.",
   "keywords": [
     "slidev-addon",
