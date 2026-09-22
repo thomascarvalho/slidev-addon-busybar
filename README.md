@@ -144,10 +144,11 @@ up" is dismissed.
 colour, or the name of one of your [logos](#logos). `until` adds the resume
 time, `text` replaces the title; any other name is shown as is.
 
-**A break** is a screen with a `timer`: the bar shows its icon and length,
-and counts down once you start it, like an activity. The last minute turns
-orange with a discreet sound; at zero, "Break's over!" blinks in the break's
-colour with the end sound. The countdown stays on the bar when you move on to
+**A break** is a screen with a `timer`: the bar shows its name and length, and
+counts down once you start it, like an activity. Its icon precedes the name
+when there is room for both; the screen itself always shows it. The last
+minute turns orange with a discreet sound; at zero, "Break's over!" blinks in
+the break's colour with the end sound. The countdown stays on the bar when you move on to
 the next slide. If a workshop is still in progress, the bar keeps showing it:
 let it end and dismiss it, or cancel it (Back held), to start the break.
 

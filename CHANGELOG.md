@@ -3,6 +3,14 @@
 Each `## <version> — <date>` section becomes the notes of that version's
 GitHub release.
 
+## 0.4.1 — 2026-09-22
+
+### Fixes
+
+- A break no longer scrolls its name during the countdown: its icon is drawn
+  only when the name fits beside it, as the hourglass of an activity already
+  was. With the default names, "Break" and "Pause" now stand still.
+
 ## 0.4.0 — 2026-09-22
 
 Timers stay in front, and one can be set from the bar itself.

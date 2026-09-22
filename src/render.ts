@@ -148,14 +148,15 @@ function spectrum(ratio: number): string {
     start, a running timer and a paused one. The hourglass precedes the label
     only if there is room: a scrolling label reads worse than no hourglass. */
 function timerLayout(label: string, value: string, color: string, labelColor: string, widest: string, running: boolean, style?: ScreenStyle): Element[] {
-  /* The screen's icon names the break itself, so it is always drawn; the
-     hourglass is mere decoration, dropped when there is no room for it. */
-  if (style?.icon)
-    return [icon(style.icon, 0, 0, running ? 100 : 35), ...labelled(label, value, color, labelColor, widest, ICON_SIZE + 1)]
-  const left = HOURGLASS.width + HOURGLASS.gap
-  if (textWidth(toDeviceText(label), FONT) > labelWidth(widest, 'large', left))
+  /* The break's icon, or the hourglass of an activity, but only while the
+     label still fits beside it: a scrolling label reads worse than a missing
+     icon. The icon comes back on the screen itself, where there is room. */
+  const [name, width, y] = style?.icon
+    ? [style.icon, ICON_SIZE + 1, 0]
+    : ['hourglass_5x5', HOURGLASS.width + HOURGLASS.gap, HOURGLASS.y]
+  if (textWidth(toDeviceText(label), FONT) > labelWidth(widest, 'large', width))
     return labelled(label, value, color, labelColor, widest)
-  return [icon('hourglass_5x5', 0, HOURGLASS.y, running ? 100 : 35), ...labelled(label, value, color, labelColor, widest, left)]
+  return [icon(name, 0, y, running ? 100 : 35), ...labelled(label, value, color, labelColor, widest, width)]
 }
 
 /** The style of a screen; an unknown screen is its name, in white. */

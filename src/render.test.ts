@@ -153,18 +153,26 @@ test('a finished timer is drawn over a special screen too', () => {
 
 const brk = (extra: Partial<Timer> = {}): Timer => ({ ...running(10 * MIN), label: 'Break', style: 'break', ...extra })
 
-test('a break to start: icon, name, length in white, empty row', () => {
+test('a break to start: name, length in white, empty row', () => {
   const scene = render({ slide: slide({ screen: 'break', timer: ['15m'] }), timer: null }, 0)
-  assert.match(String(byId(scene.elements, 'icon')!.stock_path), /dt_coffee/)
   assert.equal(byId(scene.elements, 'label')!.text, 'Break')
   assert.equal(byId(scene.elements, 'value')!.text, '15:00')
   assert.equal(byId(scene.elements, 'value')!.color, '#FFFFFFFF')
   assert.equal(byId(scene.elements, 'fill'), undefined)
 })
 
+test('the break\'s icon only while its name fits beside it', () => {
+  const long = render({ slide: null, timer: brk() }, 0)
+  assert.equal(byId(long.elements, 'icon'), undefined, '"Break" needs the whole room')
+  assert.equal(byId(long.elements, 'label')!.scroll_rate, undefined, 'so its name does not scroll')
+
+  const short = render({ slide: null, timer: brk({ label: 'Tea' }) }, 0)
+  assert.match(String(byId(short.elements, 'icon')!.stock_path), /dt_coffee/)
+  assert.ok(Number(byId(short.elements, 'label')!.x) > 16)
+})
+
 test('a running break is shown over its own screen, in its colours', () => {
   const scene = render({ slide: slide({ screen: 'break', timer: ['15m'] }), timer: brk() }, 0)
-  assert.match(String(byId(scene.elements, 'icon')!.stock_path), /dt_coffee/)
   assert.equal(byId(scene.elements, 'value')!.text, '10:00')
   assert.equal(byId(scene.elements, 'value')!.color, '#FFFFFFFF')
   assert.equal(byId(scene.elements, 'label')!.color, '#FFB454FF')
@@ -173,10 +181,12 @@ test('a running break is shown over its own screen, in its colours', () => {
   assert.equal(byId(last.elements, 'value')!.color, '#FFA000FF', 'orange in the last minute')
 })
 
-test('a paused break: grey, with its icon', () => {
+test('a paused break: grey, its icon dimmed', () => {
+  const dimmed = render({ slide: null, timer: brk({ label: 'Tea', endsAt: null, leftMs: 754_000 }) }, 0)
+  assert.match(String(byId(dimmed.elements, 'icon')!.stock_path), /dt_coffee/)
+  assert.equal(byId(dimmed.elements, 'icon')!.opacity, 35)
+
   const scene = render({ slide: null, timer: brk({ endsAt: null, leftMs: 754_000 }) }, 0)
-  assert.match(String(byId(scene.elements, 'icon')!.stock_path), /dt_coffee/)
-  assert.equal(byId(scene.elements, 'icon')!.opacity, 35)
   assert.equal(byId(scene.elements, 'value')!.text, '12:34')
   assert.equal(byId(scene.elements, 'value')!.color, '#8A8A8AFF')
   assert.equal(byId(scene.elements, 'label')!.color, '#8A8A8AFF')
@@ -184,7 +194,7 @@ test('a paused break: grey, with its icon', () => {
 })
 
 test('a running break stays in front of another screen', () => {
-  const scene = render({ slide: slide({ screen: 'questions' }), timer: brk() }, 0)
+  const scene = render({ slide: slide({ screen: 'questions' }), timer: brk({ label: 'Tea' }) }, 0)
   assert.match(String(byId(scene.elements, 'icon')!.stock_path), /dt_coffee/)
   assert.equal(byId(scene.elements, 'value')!.text, '10:00')
 })
