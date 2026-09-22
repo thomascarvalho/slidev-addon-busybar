@@ -3,7 +3,9 @@
 Each `## <version> — <date>` section becomes the notes of that version's
 GitHub release.
 
-## Unreleased
+## 0.4.0 — 2026-09-22
+
+Timers stay in front, and one can be set from the bar itself.
 
 ### Changed
 
@@ -17,8 +19,10 @@ GitHub release.
 
 ### New
 
-- Ad-hoc timer: hold the wheel's click (`timer:set`, the new default of
-  `controls.okHold`), turn the wheel to pick the minutes, press Start/Stop.
+- Ad-hoc timer, for an exercise that was not planned: hold the wheel's click
+  (`timer:set`, the new default of `controls.okHold`), turn the wheel to pick
+  1 to 120 minutes, press Start/Stop (or `b`). Back held, the click held
+  again, `Shift` + `x` or 15 s untouched close it without starting.
 
 ## 0.3.0 — 2026-09-22
 
