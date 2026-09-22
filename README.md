@@ -7,6 +7,8 @@ own.
 - **Current chapter** and how far you are in it, in a colour per chapter
 - **Workshop timers** you start from your presentation remote: green, then
   orange, then red, then a blinking "Time's up", a sound and the status LED
+- **Driven from the bar**: its wheel changes slides, its Start/Stop button
+  runs the timer
 - **Special screens**: break (with the resume time), questions, welcome, your
   own logos
 - Accented text, long titles scrolling, English and French built in
@@ -149,6 +151,55 @@ precedence over a screen.
 one button runs the whole timer. Shortcuts work in whichever window has the
 focus, audience or presenter.
 
+### From the bar
+
+With the switch on APPS, the bar itself drives the deck. By default:
+
+| On the bar | Effect |
+|---|---|
+| Wheel | next or previous step (click or slide), one per notch |
+| Start/Stop | start the slide's activity, pause, resume; dismiss "Time's up" |
+| Start/Stop, held | one more minute |
+| Back, held | cancel the timer |
+
+Turning the switch away from APPS hands the screen back to the bar; the
+console says so, and the addon redraws as soon as it is back on APPS. With the
+presenter window open, the bar drives it and the audience window follows.
+This needs Node 22 or later.
+
+Each control can do something else, or nothing, with `controls` in
+[`busybar.config.ts`](#configure); `controls: false` stops listening to the
+bar:
+
+```ts
+export default defineConfig({
+  controls: {
+    wheel: 'clicks',        // 'clicks', 'slides' (skips the clicks) or false
+    start: 'timer',         // Start/Stop
+    startHold: 'timer:add', // Start/Stop, held
+    back: false,
+    backHold: 'timer:cancel',
+    ok: false,              // the wheel's click
+    okHold: false,
+    switch: true,           // say when the switch leaves APPS, redraw on return
+  },
+})
+```
+
+| Action | Effect |
+|---|---|
+| `next`, `prev` | next or previous click or slide |
+| `nextSlide`, `prevSlide` | next or previous slide, skipping the clicks |
+| `first`, `last` | first or last slide |
+| `goto:<n>` | slide `n`, say the day's programme |
+| `overview` | open or close the slides overview |
+| `dark` | toggle dark mode |
+| `timer`, `timer:add`, `timer:cancel` | as `b`, `+` and `Shift` + `x` |
+| `false` | nothing |
+
+A button with no action when held just does its press action, whenever it is
+released.
+
 ## Configure
 
 Everything has a default. To change it, add `busybar.config.ts` next to
@@ -160,6 +211,7 @@ import { defineConfig } from 'slidev-addon-busybar'
 export default defineConfig({
   locale: 'fr', // 'en' (default) or 'fr'
   labels: { timeUp: 'Terminé !' },
+  controls: { ok: 'overview' }, // the bar's controls, see "From the bar"
   chapterColors: ['#D3A5AA', '#7BBADD', '#B25043'],
   screens: {
     pause: { title: 'Déjeuner' },
@@ -212,6 +264,9 @@ export default defineConfig({
   cached a version of the shortcuts from before the addon was installed. Clear
   the site data of `localhost:3030` once (DevTools → Application → Storage →
   Clear site data).
+- **The wheel does nothing**: the switch must be on APPS, a window of the deck
+  must be open, and Node must be 22 or later. `BUSYBAR_DEBUG=true` logs every
+  input the bar sends.
 - **See what goes to the bar**: `BUSYBAR_DEBUG=true slidev`.
 
 ## What we learnt about the bar
@@ -232,6 +287,15 @@ Tested on firmware 1.2.4 (API 27.5.0). None of it is in the official docs:
   `shared/images/<name>.image` and `shared/animations/<name>.anim`.
 - `led_notification_color` on a draw blinks the status LED; the next draw
   without it stops it.
+- Buttons, wheel and switch come on the WebSocket `/api/status/ws`
+  (`?x-api-token=` over Wi-Fi, then send `{"enable":true}`), as protobuf
+  `StateUpdate.input` (field 11). Start/Stop is `Button 2`, Back `Button 1`;
+  press and release come separately. A wheel notch is one `sint32` delta of
+  ±1. The switch is rotary: moving it reports every position it passes.
+  Screen frames come on the same socket, about ten a second.
+- That stream sometimes goes silent after a minute or so without closing:
+  the addon reconnects after 5 s of silence. busy-lib's `LocalStateStream`
+  needs a browser Web Worker, so the addon reads the socket itself.
 
 ## How it works
 
@@ -241,6 +305,11 @@ plugin (`src/plugin.ts`) receives them, ignores duplicates (audience and
 presenter windows send the same slide) and hands them to the relay, which
 draws on the bar with [`@busy-app/busy-lib`](https://github.com/busy-app/busylib-ts):
 one call in flight at a time, only what changed.
+
+The plugin also listens to the bar's state stream (`src/stream.ts`,
+`src/input.ts`) and plays the action set for each control
+(`src/controls.ts`): timer actions in the relay, Slidev actions over Vite's HMR
+socket to one window, where `setup/shortcuts.ts` calls Slidev's navigation.
 
 ## Develop
 
@@ -257,13 +326,17 @@ fill it in.
 
 ## Roadmap
 
-- [ ] Break and welcome screens counting down to `until`
+- [x] Drive the deck from the bar's wheel and buttons, configurable
+- [ ] Break and welcome screens counting down to `until`, then calling people
+  back
+- [ ] Multi-step workshop timers (read, code, share)
+- [ ] Audience phone page: "done" / "need help" counts in workshops, reactions
+- [ ] Ahead/behind the day's programme, discreetly
+- [ ] Bar reacts to Slidev clicks (`busy.clicks`)
+- [ ] Animated chapter transitions
+- [ ] Countdown before the start, finale on the last slide
 - [ ] Presenter dashboard on the back screen (clock, next chapter, timer)
-- [ ] Ahead/behind schedule
-- [ ] Phone remote
-- [ ] Timer control from the bar's buttons
-- [ ] Reactions (hearts, sparkles)
-- [ ] Configurable shortcuts, more locales, custom end sound
+- [ ] Configurable keyboard shortcuts, more locales, custom end sound
 - [ ] Logos from a PNG
 - [ ] Verify USB on hardware
 - [ ] Integration tests against the emulator, release workflow

@@ -88,6 +88,14 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
     void flush()
   }
 
+  /** Draws everything again at once, without waiting for the 5 s retry:
+      the switch on the bar just came back to APPS. */
+  function redraw() {
+    shown = null
+    clearTimeout(retry)
+    void flush()
+  }
+
   /** Plays the end sound once per timer, without waiting for the bar. */
   function ring() {
     const t = state.timer
@@ -179,7 +187,7 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
       await bar.DisplayClear({ application_name: APPLICATION }, { timeout: TIMEOUT_MS }).catch(() => {})
   }
 
-  return { setSlide, timer, configure, close, flush }
+  return { setSlide, timer, configure, redraw, close, flush }
 }
 
 /** Whether redrawing `after` over `before` would leave some of `before`'s

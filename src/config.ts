@@ -20,6 +20,29 @@ export interface Labels {
 
 export type Locale = 'en' | 'fr'
 
+/** Played in the browser window that the bar drives. */
+export type SlidevAction = 'next' | 'prev' | 'nextSlide' | 'prevSlide' | 'first' | 'last' | 'overview' | 'dark' | `goto:${number}`
+/** Played by the dev server. */
+export type TimerControl = 'timer' | 'timer:add' | 'timer:cancel'
+/** What a button of the bar does; `false` for nothing. */
+export type ControlAction = SlidevAction | TimerControl | false
+
+export interface Controls {
+  /** `clicks`: next or previous click (Slidev's `next`/`prev`); `slides`:
+      skips the clicks. */
+  wheel: 'clicks' | 'slides' | false
+  /** Start/Stop, pressed then held. */
+  start: ControlAction
+  startHold: ControlAction
+  back: ControlAction
+  backHold: ControlAction
+  /** The wheel's click. */
+  ok: ControlAction
+  okHold: ControlAction
+  /** Says when the switch leaves APPS, redraws when it comes back. */
+  switch: boolean
+}
+
 export interface BusybarConfig {
   /** Language of the default texts: `en` (default) or `fr`. */
   locale?: Locale
@@ -31,6 +54,9 @@ export interface BusybarConfig {
   /** Logos shown by `busy.screen: <name>`. Each returns `DisplayDraw`
       elements for the 72×16 screen; see `pixels` and `rect`. */
   logos?: Record<string, () => Element[]>
+  /** What the bar's wheel, buttons and switch do, merged with the defaults;
+      `false` stops listening to the bar. */
+  controls?: Partial<Controls> | false
 }
 
 export interface ResolvedConfig {
@@ -38,6 +64,8 @@ export interface ResolvedConfig {
   chapterColors: string[]
   screens: Record<string, ScreenStyle>
   logos: Record<string, () => Element[]>
+  /** `null` when turned off. */
+  controls: Controls | null
 }
 
 /** Identity function, for autocompletion in `busybar.config.ts`. */
@@ -54,6 +82,36 @@ const LOCALES: Record<Locale, { labels: Labels, screens: Record<'pause' | 'quest
     labels: { timeUp: 'Temps écoulé', timer: 'Chrono' },
     screens: { pause: 'Pause', questions: 'Questions ?', welcome: 'Bienvenue !' },
   },
+}
+
+export const DEFAULT_CONTROLS: Controls = {
+  wheel: 'clicks',
+  start: 'timer',
+  startHold: 'timer:add',
+  back: false,
+  backHold: 'timer:cancel',
+  ok: false,
+  okHold: false,
+  switch: true,
+}
+
+const ACTIONS = new Set(['next', 'prev', 'nextSlide', 'prevSlide', 'first', 'last', 'overview', 'dark', 'timer', 'timer:add', 'timer:cancel'])
+
+export function isControlAction(value: unknown): value is ControlAction {
+  return value === false || (typeof value === 'string' && (ACTIONS.has(value) || /^goto:[1-9]\d*$/.test(value)))
+}
+
+function resolveControls(config: BusybarConfig['controls']): Controls | null {
+  if (config === false)
+    return null
+  const controls = { ...DEFAULT_CONTROLS, ...config }
+  if (controls.wheel !== 'clicks' && controls.wheel !== 'slides' && controls.wheel !== false)
+    throw new Error(`[busybar] controls.wheel: "${controls.wheel}" (expected 'clicks', 'slides' or false)`)
+  for (const key of ['start', 'startHold', 'back', 'backHold', 'ok', 'okHold'] as const) {
+    if (!isControlAction(controls[key]))
+      throw new Error(`[busybar] controls.${key}: unknown action "${controls[key]}" (see the README)`)
+  }
+  return controls
 }
 
 /* Saturated colours: dark or greyish tones read poorly on LEDs. */
@@ -93,5 +151,6 @@ export function resolveConfig(config: BusybarConfig = {}): ResolvedConfig {
     chapterColors: (config.chapterColors?.length ? config.chapterColors : CHAPTER_COLORS).map(toBarColor),
     screens,
     logos: config.logos ?? {},
+    controls: resolveControls(config.controls),
   }
 }

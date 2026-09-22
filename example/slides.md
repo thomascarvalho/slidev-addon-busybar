@@ -10,7 +10,7 @@ busy:
 
 # slidev-addon-busybar
 
-A BUSY Bar that follows your slides.
+A BUSY Bar that follows your slides. Turn its wheel to move on.
 
 ---
 busy:
@@ -41,6 +41,12 @@ The bar shows the chapter and, on its last row, how far you are in it.
 
 `.env.local` holds the bar's address and access code.
 
+<v-click>
+
+The wheel steps through clicks too, like this one.
+
+</v-click>
+
 ---
 busy:
   activity: Quiz
@@ -49,7 +55,9 @@ busy:
 
 # Quiz
 
-Press `b` to start the timer, again to pause, `+` for one more minute.
+Press Start/Stop on the bar (or `b`) to start the timer, again to pause.
+Hold it (or press `+`) for one more minute; hold Back (or `Shift` + `x`) to
+cancel.
 
 ---
 busy:

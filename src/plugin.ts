@@ -10,10 +10,15 @@
      BUSYBAR_DEBUG     `true` logs every call to the bar
 
    Display settings live in an optional `busybar.config.ts` next to
-   `slides.md`, reloaded when it changes. */
+   `slides.md`, reloaded when it changes.
+
+   The bar's wheel, buttons and switch come back through its state stream and
+   play the actions set in `controls`: the timer is handled here, Slidev
+   actions are sent to one browser window over Vite's HMR socket
+   (`busybar:action`, see `setup/shortcuts.ts`). */
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import type { Plugin } from 'vite'
-import type { BusybarConfig } from './config.ts'
+import type { Plugin, WebSocketClient } from 'vite'
+import type { BusybarConfig, ControlAction, ResolvedConfig } from './config.ts'
 import type { TimerAction } from './timer.ts'
 import type { SlideInfo } from './types.ts'
 import { existsSync } from 'node:fs'
@@ -22,7 +27,10 @@ import process from 'node:process'
 import { BusyBar } from '@busy-app/busy-lib'
 import { loadConfigFromFile, loadEnv } from 'vite'
 import { resolveConfig } from './config.ts'
+import { buttonAction, route, wheelAction } from './controls.ts'
+import { createControls, SwitchPosition } from './input.ts'
 import { createRelay, DEFAULT_SOUND, TIMEOUT_MS } from './relay.ts'
+import { listenToBar } from './stream.ts'
 
 const MAX_BODY = 4096
 const CONFIG_FILES = ['busybar.config.ts', 'busybar.config.mts', 'busybar.config.js', 'busybar.config.mjs']
@@ -80,6 +88,64 @@ export function busybar(): Plugin {
       const relay = createRelay(bar, log, { sound: env.BUSYBAR_SOUND ?? DEFAULT_SOUND, config })
       log.info(`relay to ${addr}${configFile ? `, settings from ${CONFIG_FILES.find(name => configFile.endsWith(name))}` : ''}.`)
 
+      /* Browser windows showing the deck, most recent last. Audience and
+         presenter windows sync their slide both ways: if both took a wheel
+         notch, the deck could move twice. The presenter drives when open. */
+      let windows: { client: WebSocketClient, presenter: boolean }[] = []
+      server.ws.on('busybar:window', (data: { presenter?: unknown }, client) => {
+        windows = windows.filter(w => w.client !== client)
+        windows.push({ client, presenter: data?.presenter === true })
+      })
+      function play(action: ControlAction) {
+        const target = route(action)
+        if (!target)
+          return
+        log.debug?.(`control: ${action}`)
+        if ('timer' in target) {
+          relay.timer(target.timer)
+          return
+        }
+        windows = windows.filter(w => server.ws.clients.has(w.client))
+        const window = windows.findLast(w => w.presenter) ?? windows.at(-1)
+        window?.client.send('busybar:action', { action: target.slidev })
+      }
+
+      let current = config
+      const controls = createControls({
+        step: delta => current.controls && play(wheelAction(current.controls, delta)),
+        press: (button, long) => current.controls && play(buttonAction(current.controls, button, long)),
+        holds: button => !!current.controls && buttonAction(current.controls, button, true) !== false,
+        switched(position) {
+          if (!current.controls?.switch)
+            return
+          if (position === SwitchPosition.APPS) {
+            log.info('switch back on APPS.')
+            relay.redraw()
+          }
+          else {
+            const name = Object.keys(SwitchPosition).find(k => SwitchPosition[k as keyof typeof SwitchPosition] === position)
+            log.info(`switch on ${name ?? position}: the bar shows its own screen until it is back on APPS.`)
+          }
+        },
+      })
+      let stream: { close: () => void } | null = null
+      function syncControls(next: ResolvedConfig) {
+        current = next
+        if (next.controls && !stream) {
+          stream = listenToBar(log, {
+            addr,
+            password: env.BUSYBAR_PASSWORD || undefined,
+            onInput: controls.input,
+            onDisconnect: controls.reset,
+          })
+        }
+        else if (!next.controls && stream) {
+          stream.close()
+          stream = null
+        }
+      }
+      syncControls(config)
+
       if (configFile) {
         server.watcher.add(configFile)
         server.watcher.on('change', (file) => {
@@ -88,6 +154,7 @@ export function busybar(): Plugin {
           loadUserConfig()
             .then((next) => {
               relay.configure(next)
+              syncControls(next)
               log.info('settings reloaded.')
             })
             .catch(error => log.warn(`${configFile}: ${(error as Error).message}. Keeping the previous settings.`))
@@ -97,7 +164,10 @@ export function busybar(): Plugin {
       server.middlewares.use('/__busy', (req, res) => {
         void handle(req, res)
       })
-      server.httpServer?.once('close', () => void relay.close())
+      server.httpServer?.once('close', () => {
+        stream?.close()
+        void relay.close()
+      })
 
       async function handle(req: IncomingMessage, res: ServerResponse) {
         if (req.method !== 'POST')

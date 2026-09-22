@@ -106,6 +106,17 @@ test('a 409 says what to do', async () => {
   await relay.close()
 })
 
+test('redraw draws everything again at once, even an unchanged screen', async () => {
+  const { bar, calls } = fakeBar()
+  const relay = createRelay(bar, fakeLog())
+  relay.setSlide(slide(2, 'Hooks'))
+  await settle()
+  relay.redraw()
+  await settle()
+  assert.deepEqual(calls, ['clear all', 'draw title', 'clear all', 'draw title'])
+  await relay.close()
+})
+
 test('a relay that showed nothing clears nothing on exit (slidev export)', async () => {
   const { bar, calls } = fakeBar()
   await createRelay(bar, fakeLog()).close()
