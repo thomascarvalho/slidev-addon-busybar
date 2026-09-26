@@ -1,12 +1,12 @@
 import type { ResolvedConfig } from './config.ts'
 import type { RenderState } from './render.ts'
 import type { Timer } from './timer.ts'
-import type { SlideInfo } from './types.ts'
+import type { Schedule, SlideInfo } from './types.ts'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { resolveConfig } from './config.ts'
 import { rect } from './draw.ts'
-import { EMPTY_DAY } from './schedule.ts'
+import { EMPTY_DAY, enter } from './schedule.ts'
 import { render as renderScene } from './render.ts'
 
 const MIN = 60_000
@@ -285,4 +285,43 @@ test('the setting is drawn in front of everything, digits blinking until it expi
   assert.notEqual(byId(on.elements, 'value')!.color, byId(off.elements, 'value')!.color)
   assert.equal(on.nextAt, 500)
   assert.equal(render({ slide: null, timer: null, setting }, 14_800).nextAt, 15_000, 'capped at the expiry')
+})
+
+const HOUR = 60 * MIN
+const day = (h: number, m: number) => new Date(2026, 8, 26, h, m).getTime()
+const deck: Schedule = {
+  start: 9 * 60,
+  end: null,
+  warnings: [],
+  steps: [
+    { from: 2, kind: 'chapter', label: 'Hooks', durationMs: 45 * MIN, at: null },
+    { from: 6, kind: 'break', label: null, durationMs: 15 * MIN, at: null },
+    { from: 7, kind: 'chapter', label: 'Effects', durationMs: HOUR, at: null },
+  ],
+}
+
+test('a screen slide shows the schedule\'s resume time where `until` goes', () => {
+  const entered = enter(deck, EMPTY_DAY, 0, day(9, 0))
+  /* A questions slide inside Hooks: the break starts at 09:45. */
+  const questions = render({ slide: slide({ no: 4, screen: 'questions' }), timer: null, schedule: deck, day: entered }, day(9, 40)).elements
+  assert.equal(byId(questions, 'label')!.text, 'Questions?')
+  assert.equal(byId(questions, 'value')!.text, '09:45')
+  /* A break with a duration but no timer: its planned end. */
+  const lunch = render({ slide: slide({ no: 6, screen: 'break' }), timer: null, schedule: deck, day: entered }, day(9, 40)).elements
+  assert.equal(byId(lunch, 'value')!.text, '10:00')
+})
+
+test('a hand-written `until` wins; no schedule, no time', () => {
+  const entered = enter(deck, EMPTY_DAY, 0, day(9, 0))
+  const own = render({ slide: slide({ no: 4, screen: 'questions', until: '11:11' }), timer: null, schedule: deck, day: entered }, day(9, 40)).elements
+  assert.equal(byId(own, 'value')!.text, '11:11')
+  const none = render({ slide: slide({ no: 4, screen: 'questions' }), timer: null }, day(9, 40)).elements
+  assert.equal(byId(none, 'value'), undefined)
+  assert.equal(byId(none, 'title')!.text, 'Questions?')
+})
+
+test('a break armed with a timer keeps showing its duration to start', () => {
+  const entered = enter(deck, EMPTY_DAY, 0, day(9, 0))
+  const armed = render({ slide: slide({ no: 6, screen: 'break', timer: ['15m'] }), timer: null, schedule: deck, day: entered }, day(9, 40)).elements
+  assert.equal(byId(armed, 'value')!.text, '15:00')
 })

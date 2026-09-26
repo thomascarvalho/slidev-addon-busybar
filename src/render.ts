@@ -10,7 +10,8 @@ import type { Day } from './schedule.ts'
 import type { Element, Schedule, SlideInfo } from './types.ts'
 import { resolveConfig } from './config.ts'
 import { SCREEN, textWidth } from './draw.ts'
-import { formatClock } from './duration.ts'
+import { formatClock, formatTime } from './duration.ts'
+import { minutesOfDay, resumeTime } from './schedule.ts'
 import { toDeviceText } from './text.ts'
 import { armed, phaseName, remaining, status, WARN_MS } from './timer.ts'
 
@@ -228,7 +229,7 @@ function renderTimer(timer: Timer, now: number, config: ResolvedConfig): Scene {
   }
 }
 
-function renderScreen(slide: SlideInfo, screen: string, config: ResolvedConfig): Scene {
+function renderScreen(state: RenderState, slide: SlideInfo, screen: string, now: number, config: ResolvedConfig): Scene {
   const logo = config.logos[screen]
   if (logo)
     return { elements: logo(), nextAt: null }
@@ -238,10 +239,13 @@ function renderScreen(slide: SlideInfo, screen: string, config: ResolvedConfig):
   /* The firmware icon on the left, 16×16; the text in the room left. */
   const left = style.icon ? ICON_SIZE + 1 : 0
   const elements: Element[] = style.icon ? [icon(style.icon)] : []
-  /* `until: "10:45"`: when the session resumes, on the right, in the text
+  /* `until: "10:45"`, or the schedule's resume time (a break's end, the
+     next step's start): when the session resumes, on the right, in the text
      font so that it fits next to the icon. */
-  if (slide.until)
-    elements.push(...labelled(title, toDeviceText(slide.until), WHITE, style.color, slide.until, left, FONT))
+  const resume = resumeTime(state.schedule, state.day, now, slide.no)
+  const until = slide.until ?? (resume === null ? null : formatTime(minutesOfDay(resume)))
+  if (until)
+    elements.push(...labelled(title, toDeviceText(until), WHITE, style.color, until, left, FONT))
   else
     elements.push(text('title', title, style.color, left, SCREEN.width - left))
   return { elements: [...elements, ...bar(1, style.color)], nextAt: null }
@@ -277,7 +281,7 @@ export function render(state: RenderState, now: number, config: ResolvedConfig =
          unlike the dimmed hourglass of a plain activity to start. */
       return { elements: [...timerLayout(ready.label, value, WHITE, style.color, value, true, style), ...bar(0, style.color)], nextAt: null }
     }
-    return renderScreen(slide, slide.screen, config)
+    return renderScreen(state, slide, slide.screen, now, config)
   }
 
   const activity = armed(slide, config)
