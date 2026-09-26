@@ -87,11 +87,15 @@ export function current(schedule: Schedule, day: Day): number {
 }
 
 /** The origin of the chain: the actual start, else the deck's `start` on
-    `ref`'s day, else `null`. */
+    `ref`'s day, else the earliest entry (a day loaded without its start),
+    else `null`. */
 export function origin(schedule: Schedule, day: Day, ref: number): number | null {
   if (day.startedAt !== null)
     return day.startedAt
-  return schedule.start === null ? null : clockMs(schedule.start, ref)
+  if (schedule.start !== null)
+    return clockMs(schedule.start, ref)
+  const entries = Object.values(day.entered)
+  return entries.length ? Math.min(...entries) : null
 }
 
 /** Planned start and end of every step: an anchor as written, the others

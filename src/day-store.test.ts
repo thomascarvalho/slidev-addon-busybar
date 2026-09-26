@@ -22,10 +22,16 @@ test('another day, a missing or a malformed file: nothing loaded', async () => {
   assert.equal(createDayStore(file, () => '2026-09-26').load(), null)
   writeFileSync(file, '{"date":"2026-09-26","entered":"no"')
   assert.equal(createDayStore(file, () => '2026-09-26').load(), null)
-  writeFileSync(file, '{"date":"2026-09-26","startedAt":"x","entered":{"a":1,"b":"2"}}')
-  assert.deepEqual(createDayStore(file, () => '2026-09-26').load(), { startedAt: null, entered: { a: 1 } })
+  writeFileSync(file, '{"date":"2026-09-26","startedAt":5,"entered":{"a":1,"b":"2"}}')
+  assert.deepEqual(createDayStore(file, () => '2026-09-26').load(), { startedAt: 5, entered: { a: 1 } })
 })
 
 test('localDate is the local calendar day', () => {
   assert.equal(localDate(new Date(2026, 8, 6)), '2026-09-06')
+})
+
+test('entries without a readable start are dropped: the day starts empty', () => {
+  const file = join(dir(), '.busybar-day.json')
+  writeFileSync(file, '{"date":"2026-09-26","startedAt":"9","entered":{"chapter:Hooks":1}}')
+  assert.equal(createDayStore(file, () => '2026-09-26').load(), null)
 })

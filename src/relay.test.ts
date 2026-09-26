@@ -626,3 +626,37 @@ test('the schedule\'s warnings are logged once', async () => {
   assert.deepEqual(log.lines.filter(l => l.includes('busy.duration')), ['warn slide 2: busy.duration "long" is not a duration (45m, 1h30m)'])
   await relay.close()
 })
+
+test('a deck without any schedule step: Start/Stop does nothing, no day is saved', async () => {
+  const saved: Day[] = []
+  const log = fakeLog()
+  const fake = fakeBar()
+  const relay = createRelay(fake.bar, log, { store: { load: () => null, save: (d: Day) => void saved.push(d) } })
+  relay.setSchedule({ start: null, end: null, steps: [], warnings: [] })
+  relay.setSlide(slide(1, null, { screen: 'welcome' }))
+  relay.timer('toggle')
+  await settle()
+  assert.equal(saved.length, 0)
+  assert.ok(!log.lines.some(l => l.includes('day')), log.lines.join('\n'))
+  await relay.close()
+})
+
+test('cancelling on a slide before the first step resets the day (a rehearsal the same morning)', async () => {
+  const saved: Day[] = []
+  const store = { load: () => ({ startedAt: clockAt(8, 0), entered: { 'chapter:Hooks': clockAt(8, 5) } }), save: (d: Day) => void saved.push(d) }
+  const { relay, last, calls } = scheduled(clockAt(9, 0), { store })
+  relay.setSchedule(day)
+  relay.setSlide(slide(1, null, { screen: 'welcome' }))
+  await settle()
+  assert.ok(last('back:delay'), 'the rehearsal is still the current day')
+  relay.timer('cancel')
+  await settle()
+  assert.deepEqual(saved.at(-1), { startedAt: null, entered: {} })
+  assert.ok(calls.some(c => c.startsWith('clear') && c.includes('back:delay')), 'the delay is cleared with the day')
+  relay.setSlide(slide(2, 'Hooks'))
+  await settle()
+  relay.timer('cancel')
+  await settle()
+  assert.equal(saved.length, 1, 'on a step\'s slide, cancel is the timer\'s')
+  await relay.close()
+})

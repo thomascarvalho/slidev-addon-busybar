@@ -166,11 +166,21 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
 
   function timer(action: TimerAction) {
     log.debug?.(`timer: ${action}`)
-    /* Start/Stop on the welcome slide: the day begins now (spec §2). */
-    if (action === 'toggle' && !state.timer && state.schedule && current(state.schedule, state.day) < 0 && !armed(state.slide, config)) {
-      log.info('the day starts now.')
-      setDay(startDay(state.day, now()))
-      return
+    /* Before the first step, on a slide that arms nothing: Start/Stop says
+       "the day begins now" (spec §2); cancel forgets a rehearsal earlier in
+       the day. A deck without any step never keeps a day. */
+    const { schedule, slide } = state
+    if (!state.timer && schedule?.steps.length && !armed(slide, config)) {
+      if (action === 'toggle' && current(schedule, state.day) < 0) {
+        log.info('the day starts now.')
+        setDay(startDay(state.day, now()))
+        return
+      }
+      if (action === 'cancel' && slide && stepOf(schedule, slide.no) < 0 && (state.day.startedAt !== null || Object.keys(state.day.entered).length)) {
+        log.info('the day is reset.')
+        setDay(EMPTY_DAY)
+        return
+      }
     }
     replace(act(state.timer, action, state.slide, now(), config))
   }

@@ -143,3 +143,12 @@ test('the resume time of a screen slide: a break\'s end, else the next step\'s s
   assert.equal(resumeTime({ ...deck, start: null }, EMPTY_DAY, at(9, 40), 6), null, 'unknown origin')
   assert.equal(resumeTime(null, EMPTY_DAY, at(9, 40), 6), null)
 })
+
+test('an entered step without a known start never throws: the earliest entry is the origin', () => {
+  const free: Schedule = { ...deck, start: null }
+  const day = { startedAt: null, entered: { 'chapter:Hooks': at(9, 10), 'chapter:Effects': at(10, 0) } }
+  const s = status(free, day, at(10, 30))
+  assert.equal(s.current!.step.label, 'Effects')
+  assert.equal(origin(free, day, at(10, 30)), at(9, 10))
+  assert.equal(resumeTime(free, day, at(10, 30), 8), at(12, 30))
+})

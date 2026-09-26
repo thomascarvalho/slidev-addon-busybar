@@ -22,7 +22,11 @@ export function createDayStore(file: string, today: () => string = () => localDa
         if (raw?.date !== today() || typeof raw.entered !== 'object' || raw.entered === null)
           return null
         const entered = Object.fromEntries(Object.entries(raw.entered).filter((e): e is [string, number] => typeof e[1] === 'number'))
-        return { startedAt: typeof raw.startedAt === 'number' ? raw.startedAt : null, entered }
+        const startedAt = typeof raw.startedAt === 'number' ? raw.startedAt : null
+        /* Entries without a start would leave the day without an origin. */
+        if (startedAt === null && Object.keys(entered).length)
+          return null
+        return { startedAt, entered }
       }
       catch {
         return null

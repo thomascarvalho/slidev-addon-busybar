@@ -222,7 +222,10 @@ shifts to that time, anchored moments stay put. Without it, the deck's
 `start` is the reference.
 
 The day is saved in `.busybar-day.json` next to `slides.md` (git-ignore
-it), so that restarting `slidev` keeps your place. Timers are not.
+it), so that restarting `slidev` keeps your place. Timers are not. Rehearsed
+the deck earlier the same morning? Hold Back on the bar (or press `Shift` +
+`x`) on the welcome slide, before the first chapter: the day is forgotten
+and starts afresh.
 
 ### Shortcuts
 
