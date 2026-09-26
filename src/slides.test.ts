@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { slideInfo } from './slides.ts'
+import { schedule, slideInfo } from './slides.ts'
 
 const deck = [
   undefined, // cover, before any chapter
@@ -73,4 +73,48 @@ test('a slide can give its timer a sound, or silence it', () => {
   assert.equal(slideInfo([{ timer: '5m', sound: './gong.wav' }], 0).sound, './gong.wav')
   assert.equal(slideInfo([{ timer: '5m', sound: false }], 0).sound, false)
   assert.equal(slideInfo([{ timer: '5m' }], 0).sound, null)
+})
+
+test('the schedule: chapters with a duration, screens with a duration, a timer or an anchor', () => {
+  const s = schedule([
+    { screen: 'welcome', start: '09:00', end: '17:00' },
+    { chapter: 'Hooks', duration: '45m' },
+    undefined,
+    { screen: 'break', timer: '15m' },
+    { chapter: 'Effects' }, // no duration, no anchor: not a step
+    { screen: 'questions' }, // not a step either
+    { screen: 'break', text: 'Déjeuner', at: '12:30', duration: '1h' },
+    { chapter: 'Rendering', at: '13:30' },
+    { activity: 'Lab', timer: ['5m Reading', '10m Coding'] }, // an activity is not a step
+  ])
+  assert.equal(s.start, 540)
+  assert.equal(s.end, 1020)
+  assert.deepEqual(s.steps, [
+    { from: 2, kind: 'chapter', label: 'Hooks', durationMs: 2_700_000, at: null },
+    { from: 4, kind: 'break', label: null, durationMs: 900_000, at: null },
+    { from: 7, kind: 'break', label: 'Déjeuner', durationMs: 3_600_000, at: 750 },
+    { from: 8, kind: 'chapter', label: 'Rendering', durationMs: 0, at: 810 },
+  ])
+  assert.deepEqual(s.warnings, [])
+})
+
+test('a phased timer on a screen sums its phases; an explicit duration wins', () => {
+  const s = schedule([undefined, { screen: 'break', timer: ['5m', '10m'] }, { screen: 'break', timer: '5m', duration: '20m' }])
+  assert.deepEqual(s.steps.map(step => step.durationMs), [900_000, 1_200_000])
+})
+
+test('unreadable schedule values are skipped with a warning naming the slide', () => {
+  const s = schedule([{ start: 'nine', end: '17:00' }, { chapter: 'Hooks', duration: 'long' }, { screen: 'break', at: '25:00', timer: '15m' }])
+  assert.equal(s.start, null)
+  assert.equal(s.end, 1020)
+  assert.deepEqual(s.steps, [{ from: 3, kind: 'break', label: null, durationMs: 900_000, at: null }])
+  assert.deepEqual(s.warnings, [
+    'slide 1: busy.start "nine" is not a time (HH:MM)',
+    'slide 2: busy.duration "long" is not a duration (45m, 1h30m)',
+    'slide 3: busy.at "25:00" is not a time (HH:MM)',
+  ])
+})
+
+test('a deck without any schedule key has an empty schedule', () => {
+  assert.deepEqual(schedule([undefined, { chapter: 'Hooks' }, undefined]), { start: null, end: null, steps: [], warnings: [] })
 })
