@@ -4,7 +4,7 @@
    draws as its own application at a higher priority, then clears. */
 import type { RenderState } from './render.ts'
 import type { Timer } from './timer.ts'
-import type { SlideInfo } from './types.ts'
+import type { Element, SlideInfo } from './types.ts'
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
@@ -58,10 +58,7 @@ const states: Record<string, RenderState> = {
 /* "Time's up", "Break's over!" and the setting captured while lit. */
 const at = (name: string) => name === 'time-up' || name === 'break-over' || name === 'setting' ? now - (now % 1000) : now
 
-function png(px: Uint8Array, file: string) {
-  const W = 72
-  const H = 16
-  const S = 10
+function png(px: Uint8Array, file: string, W = 72, H = 16, S = 10) {
   const row = W * S * 3 + 1
   const raw = Buffer.alloc(row * H * S)
   for (let y = 0; y < H * S; y++) {
@@ -106,5 +103,39 @@ for (const [name, state] of Object.entries(states)) {
   const px = await bar.DisplayScreenFrameGet({ display: 0 }, { dataType: 'binary', format: 'rgba' })
   png(px!, path.join(out, `${name}.png`))
   console.log(name)
+}
+
+/* Back display probes (spike, spec §6): fonts, scrolling, greys, accents,
+   a mixed front + back draw, and clearing back elements by id. */
+const back = <T extends Record<string, unknown>>(e: T) => ({ ...e, display: 'back' as const })
+const fonts = ['tiny', 'small', 'normal', 'condensed', 'bold', 'large', 'extra_large', 'global'] as const
+const probes: Record<string, Element[]> = {
+  'back-fonts': fonts.map((font, i) => back({ id: `f-${font}`, type: 'text' as const, text: `${font} 10:52`, font, color: '#FFFFFFFF', x: 2 + (i % 2) * 80, y: 2 + Math.floor(i / 2) * 19, align: 'top_left' as const })),
+  'back-greys': ['#FFFFFFFF', '#C0C0C0FF', '#8A8A8AFF', '#404040FF', '#202020FF'].map((color, i) => back({ id: `g${i}`, type: 'rectangle' as const, x: 4 + i * 30, y: 10, width: 24, height: 40, fill: 'solid' as const, fill_colors: [color], border_width: 0 })),
+  'back-scroll': [
+    back({ id: 'scroll', type: 'text' as const, text: 'Référencer du code et sécuriser le réseau', font: 'global' as const, color: '#FFFFFFFF', x: 4, y: 20, align: 'top_left' as const, width: 100, scroll_rate: 900, scroll_start_delay: 500, scroll_repeat_delay: 2000 }),
+    back({ id: 'accents', type: 'text' as const, text: 'Éléphant à l\'école', font: 'global' as const, color: '#FFFFFFFF', x: 4, y: 50, align: 'top_left' as const }),
+  ],
+  'back-mixed': [
+    { id: 'front-title', type: 'text', text: 'Front', font: 'global', color: '#FFFFFFFF', x: 36, y: 2, align: 'top_mid' },
+    back({ id: 'back-title', type: 'text' as const, text: 'Back', font: 'extra_large' as const, color: '#FFFFFFFF', x: 80, y: 30, align: 'top_mid' as const }),
+    back({ id: 'back-box', type: 'rectangle' as const, x: 10, y: 10, width: 20, height: 20, fill: 'solid' as const, fill_colors: ['#8A8A8AFF'], border_width: 0 }),
+  ],
+}
+for (const [name, elements] of Object.entries(probes)) {
+  await bar.DisplayClear({ application_name: APPLICATION })
+  await bar.DisplayDraw({ application_name: APPLICATION, priority: 60, elements })
+  await new Promise(resolve => setTimeout(resolve, name === 'back-scroll' ? 3000 : 500))
+  const px = await bar.DisplayScreenFrameGet({ display: 1 }, { dataType: 'binary', format: 'rgba' })
+  png(px!, path.join(out, `${name}.png`), 160, 80, 4)
+  console.log(name)
+  if (name === 'back-mixed') {
+    /* Does clearing by id reach back elements? Both screens captured after. */
+    await bar.DisplayClear({ application_name: APPLICATION, element_ids: ['back-box'] })
+    await new Promise(resolve => setTimeout(resolve, 500))
+    png((await bar.DisplayScreenFrameGet({ display: 1 }, { dataType: 'binary', format: 'rgba' }))!, path.join(out, 'back-mixed-cleared.png'), 160, 80, 4)
+    png((await bar.DisplayScreenFrameGet({ display: 0 }, { dataType: 'binary', format: 'rgba' }))!, path.join(out, 'front-mixed.png'))
+    console.log('back-mixed-cleared')
+  }
 }
 await bar.DisplayClear({ application_name: APPLICATION })

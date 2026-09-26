@@ -405,6 +405,14 @@ Tested on firmware 1.2.4 (API 27.5.0). None of it is in the official docs:
   little-endian, mono, 44 100 Hz, and ignores headers: a 22 050 Hz WAV plays
   twice as fast. The addon converts WAV files and uploads them to its assets
   (`AssetsUpload`), then plays them with `AudioPlay({ path })`.
+- The back display is 160×80 in 16 greys: colours are converted to
+  luminance, and five levels from `#FFFFFF` to `#202020` stay
+  distinguishable. Elements take `display: 'back'` and may share a
+  `DisplayDraw` with front ones; `DisplayClear` with `element_ids` removes
+  them too. Every font draws there (`extra_large` is 12 px high, capitals
+  only), text scrolls, and the `global` font keeps its accents. The firmware
+  draws its own status column (Bluetooth, Wi-Fi, battery…) over the
+  rightmost 12 pixels (x ≥ 148): keep them free.
 
 ## How it works
 
