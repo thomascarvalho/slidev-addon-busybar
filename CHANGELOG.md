@@ -13,7 +13,8 @@ The bar's back becomes the trainer's dashboard.
   `duration` on chapters and screens, `at` to anchor a fixed moment; a
   break's `timer` counts as its duration. The relay follows the furthest
   chapter reached, after `schedule.grace` (10 s) on one of its slides.
-  Start/Stop on the welcome slide says "the day begins now".
+  Start/Stop on the welcome slide says "the day begins now"; Back held (or
+  `Shift` + `x`) there forgets a rehearsal earlier the same day.
 - **The back display**: the clock, the delay in minutes, the current
   chapter and its time left, a timer in progress, and what comes next with
   its time. Greyscale, 160×80, big home-made digits.
