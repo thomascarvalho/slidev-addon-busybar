@@ -2,6 +2,7 @@
    Everything has a default. */
 import type { Sound } from './sounds.ts'
 import type { Element } from './types.ts'
+import { parseDuration } from './duration.ts'
 import { parseSound } from './sounds.ts'
 
 export interface ScreenStyle {
@@ -24,6 +25,15 @@ export interface Labels {
   phase: string
   /** Before the name of the next phase of a workshop. */
   upNext: string
+  /** Back display: under the delay, when behind / ahead of the schedule. */
+  late: string
+  early: string
+  /** Back display: caption of the current chapter's band. */
+  chapter: string
+  /** Back display: caption of the "what comes next" band. */
+  next: string
+  /** Back display: the end of the day, once the last step is reached. */
+  end: string
 }
 
 export type Locale = 'en' | 'fr'
@@ -54,6 +64,13 @@ export interface Controls {
 /** When the bar plays a sound. */
 export type SoundMoment = 'timeUp' | 'breakOver' | 'breakWarning' | 'phaseEnd' | 'start'
 
+export interface ScheduleConfig {
+  /** How long a slide must stay before its step counts as entered: a
+      duration (`10s` by default), so that one wheel notch too far changes
+      nothing. */
+  grace?: string
+}
+
 export interface BusybarConfig {
   /** Language of the default texts: `en` (default) or `fr`. */
   locale?: Locale
@@ -71,6 +88,8 @@ export interface BusybarConfig {
   /** The sound of each moment: a stock sound name (`'volume_change'`), a
       WAV file of the deck (`'./sounds/gong.wav'`) or `false`. */
   sounds?: Partial<Record<SoundMoment, string | false>>
+  /** The day's schedule: the grace before a step counts as entered. */
+  schedule?: ScheduleConfig
 }
 
 export interface ResolvedConfig {
@@ -81,6 +100,7 @@ export interface ResolvedConfig {
   /** `null` when turned off. */
   controls: Controls | null
   sounds: Record<SoundMoment, Sound>
+  schedule: { graceMs: number }
 }
 
 /** Identity function, for autocompletion in `busybar.config.ts`. */
@@ -90,11 +110,11 @@ export function defineConfig(config: BusybarConfig): BusybarConfig {
 
 const LOCALES: Record<Locale, { labels: Labels, screens: Record<'break' | 'questions' | 'welcome', string> }> = {
   en: {
-    labels: { timeUp: 'Time\'s up', breakOver: 'Break\'s over!', timer: 'Timer', phase: 'Phase', upNext: 'Next' },
+    labels: { timeUp: 'Time\'s up', breakOver: 'Break\'s over!', timer: 'Timer', phase: 'Phase', upNext: 'Next', late: 'late', early: 'early', chapter: 'Chapter', next: 'Next', end: 'End' },
     screens: { break: 'Break', questions: 'Questions?', welcome: 'Welcome!' },
   },
   fr: {
-    labels: { timeUp: 'Temps écoulé', breakOver: 'On reprend !', timer: 'Chrono', phase: 'Phase', upNext: 'Suivant' },
+    labels: { timeUp: 'Temps écoulé', breakOver: 'On reprend !', timer: 'Chrono', phase: 'Phase', upNext: 'Suivant', late: 'retard', early: 'avance', chapter: 'Chapitre', next: 'Suite', end: 'Fin' },
     screens: { break: 'Pause', questions: 'Questions ?', welcome: 'Bienvenue !' },
   },
 }
@@ -129,6 +149,17 @@ function resolveSounds(config: BusybarConfig['sounds']): Record<SoundMoment, Sou
     sounds[key as SoundMoment] = sound
   }
   return sounds
+}
+
+export const DEFAULT_GRACE_MS = 10_000
+
+function resolveSchedule(config: BusybarConfig['schedule']): ResolvedConfig['schedule'] {
+  if (config?.grace === undefined)
+    return { graceMs: DEFAULT_GRACE_MS }
+  const graceMs = parseDuration(config.grace)
+  if (graceMs === null)
+    throw new Error(`[busybar] schedule.grace: "${config.grace}" is not a duration (10s, 1m)`)
+  return { graceMs }
 }
 
 const ACTIONS = new Set(['next', 'prev', 'nextSlide', 'prevSlide', 'first', 'last', 'overview', 'dark', 'timer:toggle', 'timer:add', 'timer:skip', 'timer:cancel', 'timer:set'])
@@ -189,5 +220,6 @@ export function resolveConfig(config: BusybarConfig = {}): ResolvedConfig {
     logos: config.logos ?? {},
     controls: resolveControls(config.controls),
     sounds: resolveSounds(config.sounds),
+    schedule: resolveSchedule(config.schedule),
   }
 }

@@ -49,3 +49,16 @@ test('sounds: defaults, overrides, silence, and errors naming the key', () => {
   assert.throws(() => resolveConfig({ sounds: { timeUp: 'gong.mp3' } }), /sounds\.timeUp/)
   assert.throws(() => resolveConfig({ sounds: { ending: 'volume_change' } as never }), /sounds\.ending/)
 })
+
+test('the back display\'s labels, in both languages', () => {
+  const en = resolveConfig().labels
+  assert.deepEqual([en.late, en.early, en.chapter, en.next, en.end], ['late', 'early', 'Chapter', 'Next', 'End'])
+  const fr = resolveConfig({ locale: 'fr' }).labels
+  assert.deepEqual([fr.late, fr.early, fr.chapter, fr.next, fr.end], ['retard', 'avance', 'Chapitre', 'Suite', 'Fin'])
+})
+
+test('the grace before a step counts as entered: 10 s by default, a duration otherwise', () => {
+  assert.equal(resolveConfig().schedule.graceMs, 10_000)
+  assert.equal(resolveConfig({ schedule: { grace: '30s' } }).schedule.graceMs, 30_000)
+  assert.throws(() => resolveConfig({ schedule: { grace: 'soon' } }), /schedule\.grace/)
+})
