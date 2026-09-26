@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { formatClock, parseDuration, parsePhases } from './duration.ts'
+import { formatClock, formatTime, parseClock, parseDuration, parsePhases } from './duration.ts'
 
 test('reads frontmatter durations', () => {
   assert.equal(parseDuration('90s'), 90_000)
@@ -40,4 +40,23 @@ test('one unreadable phase and there is no timer', () => {
   assert.equal(parsePhases(['5m Reading', 'soon Coding']), null)
   assert.equal(parsePhases([]), null)
   assert.equal(parsePhases('Reading'), null)
+})
+
+test('reads clock times as minutes since midnight', () => {
+  assert.equal(parseClock('10:45'), 645)
+  assert.equal(parseClock('9:05'), 545)
+  assert.equal(parseClock(' 12h30 '), 750)
+  assert.equal(parseClock('00:00'), 0)
+})
+
+test('rejects what is not a clock time', () => {
+  for (const value of ['', '24:00', '10:60', '10', '10:5', 'noon', '10:45:00'])
+    assert.equal(parseClock(value), null, value)
+})
+
+test('formats minutes since midnight as HH:MM, floored', () => {
+  assert.equal(formatTime(645), '10:45')
+  assert.equal(formatTime(545), '09:05')
+  assert.equal(formatTime(52.9), '00:52')
+  assert.equal(formatTime(1440), '00:00')
 })

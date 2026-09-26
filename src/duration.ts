@@ -47,3 +47,20 @@ export function parsePhases(value: string | readonly string[]): Phase[] | null {
   }
   return phases
 }
+
+/** `10:45` or `10h45` → minutes since midnight; `null` if unreadable. */
+export function parseClock(value: string): number | null {
+  const match = /^\s*(\d{1,2})\s*[:h]\s*(\d{2})\s*$/i.exec(value)
+  if (!match)
+    return null
+  const h = Number(match[1])
+  const m = Number(match[2])
+  return h < 24 && m < 60 ? h * 60 + m : null
+}
+
+/** 645 → `10:45`. Minutes are floored; a full day wraps to `00:00`. */
+export function formatTime(minutes: number): string {
+  const total = ((Math.floor(minutes) % 1440) + 1440) % 1440
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`
+}
