@@ -14,6 +14,8 @@ own.
 - **Your own sounds**: every moment can ring a stock sound, one of your WAV
   files, or nothing
 - Accented text, long titles scrolling, English and French built in
+- **The day's schedule** on the back of the bar, for you only: the clock,
+  how late or early you are, the time left on the chapter, what comes next
 
 ![Chapter and progress](docs/screens/chapter.png)
 ![A workshop timer](docs/screens/timer-short-label.png)
@@ -178,6 +180,50 @@ shown in front of every screen and chapter until it ends and is dismissed, or
 is cancelled: what the bar shows is what Start/Stop acts on. The slide's
 screen comes back afterwards.
 
+### The day's schedule
+
+Give the deck a start and an end, chapters a `duration`, and anchor the
+fixed moments with `at`. A break's `timer` counts as its duration.
+
+```yaml
+---
+busy: { start: "09:00", end: "17:00" }   # headmatter
+---
+busy: { chapter: Hooks, duration: 45m }
+---
+busy: { screen: break, timer: 15m }
+---
+busy: { screen: break, text: Déjeuner, at: "12:30", duration: 1h }
+---
+```
+
+The **back of the bar**, facing you, then shows the clock and how many
+minutes late (`+12`) or early (`-5`) you are, the chapter you are in and the
+time it has left, a timer in progress, and what comes next with its time.
+The room never sees the delay; a break or questions slide shows the time
+the session resumes.
+
+![The back of the bar during a chapter](docs/screens/back-chapter.png)
+![Running over the chapter's duration](docs/screens/back-overrun.png)
+![A timer on the back](docs/screens/back-timer.png)
+![Between two workshop phases](docs/screens/back-lab-next.png)
+![The last step, then the end of the day](docs/screens/back-end.png)
+
+A chapter counts as started once you have stayed 10 seconds on one of its
+slides (`schedule.grace` in the config): one wheel notch too far changes
+nothing. Going back to an earlier chapter changes nothing either: the
+schedule follows the furthest chapter you have reached. Skipped chapters
+count as done.
+
+The delay compares when you started a chapter with when it was planned, and
+grows once you run over its duration. Press Start/Stop (or `b`) on the
+welcome slide, before any chapter, to say "the day begins now": the plan
+shifts to that time, anchored moments stay put. Without it, the deck's
+`start` is the reference.
+
+The day is saved in `.busybar-day.json` next to `slides.md` (git-ignore
+it), so that restarting `slidev` keeps your place. Timers are not.
+
 ### Shortcuts
 
 | Key | Effect |
@@ -261,6 +307,7 @@ export default defineConfig({
   locale: 'fr', // 'en' (default) or 'fr'
   labels: { timeUp: 'Terminé !', breakOver: 'Au travail !', upNext: 'Ensuite' },
   controls: { ok: 'overview' }, // the bar's controls, see "From the bar"
+  schedule: { grace: '10s' }, // before a chapter counts as started, see "The day's schedule"
   chapterColors: ['#D3A5AA', '#7BBADD', '#B25043'],
   screens: {
     break: { title: 'Déjeuner' },
@@ -423,6 +470,11 @@ presenter windows send the same slide) and hands them to the relay, which
 draws on the bar with [`@busy-app/busy-lib`](https://github.com/busy-app/busylib-ts):
 one call in flight at a time, only what changed.
 
+The browser also derives the day's schedule from the frontmatter and posts
+it to `POST /__busy/schedule`. The relay keeps the day's state (`src/schedule.ts`:
+actual start, entry time of each chapter, delay) and draws the back display
+(`src/render-back.ts`) in the same call as the front.
+
 The plugin also listens to the bar's state stream (`src/stream.ts`,
 `src/input.ts`) and plays the action set for each control
 (`src/controls.ts`): timer actions in the relay, Slidev actions over Vite's HMR
@@ -463,8 +515,8 @@ GitHub release from the changelog section.
 - [x] Configurable sounds, with your own WAV files
 - [x] Release workflow: tag, test, publish with provenance
 - [x] Ad-hoc timer set with the wheel, no slide needed
-- [ ] The day's programme: ahead/behind, "Next: Lunch at 12:30", end-of-day
-  report
+- [x] The day's schedule: ahead/behind, next step, back display
+- [ ] End-of-day report (actual vs planned durations)
 - [ ] Participant roulette spun with the wheel
 - [ ] Audience phone page: "done" / "need help" counts in workshops, reactions
 - [ ] Bar reacts to Slidev clicks (`busy.clicks`)

@@ -3,6 +3,27 @@
 Each `## <version> — <date>` section becomes the notes of that version's
 GitHub release.
 
+## Unreleased
+
+The bar's back becomes the trainer's dashboard.
+
+### New
+
+- **The day's schedule**: `busy.start` and `busy.end` in the headmatter,
+  `duration` on chapters and screens, `at` to anchor a fixed moment; a
+  break's `timer` counts as its duration. The relay follows the furthest
+  chapter reached, after `schedule.grace` (10 s) on one of its slides.
+  Start/Stop on the welcome slide says "the day begins now".
+- **The back display**: the clock, the delay in minutes, the current
+  chapter and its time left, a timer in progress, and what comes next with
+  its time. Greyscale, 160×80, big home-made digits.
+- Screen slides without `until` show the schedule's resume time: a break's
+  end, or the next step's start.
+- The day is saved in `.busybar-day.json` next to the deck and reloaded on
+  the same day.
+- New labels `late`, `early`, `chapter`, `next`, `end`; new config
+  `schedule.grace`.
+
 ## 0.4.1 — 2026-09-22
 
 ### Fixes

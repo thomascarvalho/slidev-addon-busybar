@@ -6,11 +6,15 @@ addons:
 title: slidev-addon-busybar
 busy:
   screen: welcome
+  end: "17:00"
 ---
 
 # slidev-addon-busybar
 
 A BUSY Bar that follows your slides. Turn its wheel to move on.
+
+Press Start/Stop (or `b`) here: the day begins. The back of the bar shows
+the clock, your delay and what comes next.
 
 ---
 busy:
@@ -25,6 +29,7 @@ Declared in `busybar.config.ts`.
 layout: section
 busy:
   chapter: Getting started
+  duration: 2m
 ---
 
 # Getting started
@@ -74,7 +79,7 @@ ends the current phase; click again (or Start/Stop) to start the next one.
 ---
 busy:
   screen: break
-  timer: 15m
+  timer: 1m
 ---
 
 # Break
@@ -86,6 +91,7 @@ everyone back.
 layout: section
 busy:
   chapter: Référencer du code
+  duration: 2m
 ---
 
 # Référencer du code

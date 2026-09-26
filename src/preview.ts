@@ -4,7 +4,7 @@
    draws as its own application at a higher priority, then clears. */
 import type { RenderState } from './render.ts'
 import type { Timer } from './timer.ts'
-import type { Element, SlideInfo } from './types.ts'
+import type { Schedule, SlideInfo } from './types.ts'
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
@@ -12,8 +12,9 @@ import zlib from 'node:zlib'
 import { BusyBar } from '@busy-app/busy-lib'
 import { resolveConfig } from './config.ts'
 import { rect } from './draw.ts'
+import { renderBack } from './render-back.ts'
 import { render } from './render.ts'
-import { EMPTY_DAY } from './schedule.ts'
+import { EMPTY_DAY, enter } from './schedule.ts'
 
 const out = process.argv[2]
 if (!out) {
@@ -107,37 +108,40 @@ for (const [name, state] of Object.entries(states)) {
   console.log(name)
 }
 
-/* Back display probes (spike, spec §6): fonts, scrolling, greys, accents,
-   a mixed front + back draw, and clearing back elements by id. */
-const back = <T extends Record<string, unknown>>(e: T) => ({ ...e, display: 'back' as const })
-const fonts = ['tiny', 'small', 'normal', 'condensed', 'bold', 'large', 'extra_large', 'global'] as const
-const probes: Record<string, Element[]> = {
-  'back-fonts': fonts.map((font, i) => back({ id: `f-${font}`, type: 'text' as const, text: `${font} 10:52`, font, color: '#FFFFFFFF', x: 2 + (i % 2) * 80, y: 2 + Math.floor(i / 2) * 19, align: 'top_left' as const })),
-  'back-greys': ['#FFFFFFFF', '#C0C0C0FF', '#8A8A8AFF', '#404040FF', '#202020FF'].map((color, i) => back({ id: `g${i}`, type: 'rectangle' as const, x: 4 + i * 30, y: 10, width: 24, height: 40, fill: 'solid' as const, fill_colors: [color], border_width: 0 })),
-  'back-scroll': [
-    back({ id: 'scroll', type: 'text' as const, text: 'Référencer du code et sécuriser le réseau', font: 'global' as const, color: '#FFFFFFFF', x: 4, y: 20, align: 'top_left' as const, width: 100, scroll_rate: 900, scroll_start_delay: 500, scroll_repeat_delay: 2000 }),
-    back({ id: 'accents', type: 'text' as const, text: 'Éléphant à l\'école', font: 'global' as const, color: '#FFFFFFFF', x: 4, y: 50, align: 'top_left' as const }),
-  ],
-  'back-mixed': [
-    { id: 'front-title', type: 'text', text: 'Front', font: 'global', color: '#FFFFFFFF', x: 36, y: 2, align: 'top_mid' },
-    back({ id: 'back-title', type: 'text' as const, text: 'Back', font: 'extra_large' as const, color: '#FFFFFFFF', x: 80, y: 30, align: 'top_mid' as const }),
-    back({ id: 'back-box', type: 'rectangle' as const, x: 10, y: 10, width: 20, height: 20, fill: 'solid' as const, fill_colors: ['#8A8A8AFF'], border_width: 0 }),
+/* The back display, by state; captured from the back screen (display 1). */
+const day = (h: number, m: number) => new Date(new Date(now).setHours(h, m, 0, 0)).getTime()
+const deck: Schedule = {
+  start: 9 * 60,
+  end: 17 * 60,
+  warnings: [],
+  steps: [
+    { from: 2, kind: 'chapter', label: 'Hooks', durationMs: 45 * 60_000, at: null },
+    { from: 6, kind: 'break', label: null, durationMs: 15 * 60_000, at: null },
+    { from: 7, kind: 'chapter', label: 'Référencer du code', durationMs: 60 * 60_000, at: null },
+    { from: 12, kind: 'break', label: 'Déjeuner', durationMs: 60 * 60_000, at: 12 * 60 + 30 },
   ],
 }
-for (const [name, elements] of Object.entries(probes)) {
+const hooks = enter(deck, EMPTY_DAY, 0, day(9, 12))
+/* Timer scenes run at the real time: a schedule that started 30 min ago, on time. */
+const live: Schedule = { ...deck, start: Math.floor((now - new Date(now).setHours(0, 0, 0, 0)) / 60_000) - 30, steps: deck.steps.map(s => ({ ...s, at: null })) }
+const onTime = enter(live, EMPTY_DAY, 0, now - 30 * 60_000)
+const backs: Record<string, { state: RenderState, at: number }> = {
+  'back-idle': { state: { ...base, slide: null, timer: null }, at: now },
+  'back-before': { state: { ...base, slide: null, timer: null, schedule: deck }, at: day(8, 50) },
+  'back-chapter': { state: { ...base, slide: null, timer: null, schedule: deck, day: hooks }, at: day(9, 24) },
+  'back-overrun': { state: { ...base, slide: null, timer: null, schedule: deck, day: enter(deck, EMPTY_DAY, 0, day(9, 0)) }, at: day(9, 50) },
+  'back-long-title': { state: { ...base, slide: null, timer: null, schedule: deck, day: enter(deck, EMPTY_DAY, 2, day(10, 0)) }, at: day(10, 10) },
+  'back-timer': { state: { ...base, slide: null, timer: timer(754_000), schedule: live, day: onTime }, at: now },
+  'back-lab-next': { state: { ...base, slide: null, timer: lab(0, now - 5_000), schedule: live, day: onTime }, at: now },
+  'back-time-up': { state: { ...base, slide: null, timer: timer(-5000), schedule: live, day: onTime }, at: now - (now % 1000) },
+  'back-end': { state: { ...base, slide: null, timer: null, schedule: deck, day: enter(deck, EMPTY_DAY, 3, day(12, 30)) }, at: day(12, 40) },
+}
+for (const [name, { state, at }] of Object.entries(backs)) {
   await bar.DisplayClear({ application_name: APPLICATION })
-  await bar.DisplayDraw({ application_name: APPLICATION, priority: 60, elements })
-  await new Promise(resolve => setTimeout(resolve, name === 'back-scroll' ? 3000 : 500))
+  await bar.DisplayDraw({ application_name: APPLICATION, priority: 60, elements: renderBack(state, at, config).elements })
+  await new Promise(resolve => setTimeout(resolve, 500))
   const px = await bar.DisplayScreenFrameGet({ display: 1 }, { dataType: 'binary', format: 'rgba' })
   png(px!, path.join(out, `${name}.png`), 160, 80, 4)
   console.log(name)
-  if (name === 'back-mixed') {
-    /* Does clearing by id reach back elements? Both screens captured after. */
-    await bar.DisplayClear({ application_name: APPLICATION, element_ids: ['back-box'] })
-    await new Promise(resolve => setTimeout(resolve, 500))
-    png((await bar.DisplayScreenFrameGet({ display: 1 }, { dataType: 'binary', format: 'rgba' }))!, path.join(out, 'back-mixed-cleared.png'), 160, 80, 4)
-    png((await bar.DisplayScreenFrameGet({ display: 0 }, { dataType: 'binary', format: 'rgba' }))!, path.join(out, 'front-mixed.png'))
-    console.log('back-mixed-cleared')
-  }
 }
 await bar.DisplayClear({ application_name: APPLICATION })
