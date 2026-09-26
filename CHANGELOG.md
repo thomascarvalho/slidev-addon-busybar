@@ -3,7 +3,7 @@
 Each `## <version> — <date>` section becomes the notes of that version's
 GitHub release.
 
-## Unreleased
+## 0.5.0 — 2026-09-26
 
 The bar's back becomes the trainer's dashboard.
 
