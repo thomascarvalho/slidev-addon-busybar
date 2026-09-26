@@ -1,6 +1,7 @@
 import type { Bar, RelayOptions } from './relay.ts'
 import type { Sound } from './sounds.ts'
-import type { SlideInfo } from './types.ts'
+import type { Day } from './schedule.ts'
+import type { Schedule, SlideInfo } from './types.ts'
 import assert from 'node:assert/strict'
 import { mock, test } from 'node:test'
 import { resolveConfig } from './config.ts'
@@ -11,7 +12,7 @@ function slide(no: number, chapter: string | null, extra: Partial<SlideInfo> = {
   return { no, title: null, chapter, chapterNo: null, progress: null, activity: null, timer: null, screen: null, until: null, text: null, sound: null, ...extra }
 }
 
-interface Drawn { id: string, text?: string }
+interface Drawn { id: string, text?: string, data?: string }
 
 /* A bar that records calls; `fail` makes it unreachable. */
 function fakeBar() {
@@ -24,7 +25,11 @@ function fakeBar() {
     async DisplayDraw(params) {
       if (state.fail)
         throw state.fail
-      calls.push(`draw ${params.elements.map(e => e.id).join(',')}`)
+      /* `calls` lists the front's ids: the back's come with every draw and
+         are checked by their own test. */
+      const front = params.elements.filter(e => (e as { display?: string }).display !== 'back')
+      if (front.length)
+        calls.push(`draw ${front.map(e => e.id).join(',')}`)
       drawn.push(...params.elements as Drawn[])
       leds.push(params.led_notification_color)
       return { result: 'OK' }
@@ -42,7 +47,7 @@ function fakeBar() {
     },
   }
   const last = (id: string) => drawn.findLast(e => e.id === id)
-  return { bar, calls, leds, played, state, last }
+  return { bar, calls, drawn, leds, played, state, last }
 }
 
 function fakeLog() {
@@ -495,3 +500,129 @@ test('a break ending plays sounds.breakOver from the config, not timeUp', async 
   await fake.relay.close()
 })
 
+
+const MIN = 60_000
+const clockAt = (h: number, m: number, s = 0) => new Date(2026, 8, 26, h, m, s).getTime()
+const day: Schedule = {
+  start: 9 * 60,
+  end: 17 * 60,
+  warnings: [],
+  steps: [
+    { from: 2, kind: 'chapter', label: 'Hooks', durationMs: 45 * MIN, at: null },
+    { from: 6, kind: 'chapter', label: 'Effects', durationMs: 60 * MIN, at: null },
+  ],
+}
+
+/** A relay with a fake clock and hand-fired timers (grace). */
+function scheduled(start = clockAt(9, 0), options: RelayOptions = {}) {
+  const fake = fakeBar()
+  let clock = start
+  const timers: { fn: () => void, ms: number }[] = []
+  const relay = createRelay(fake.bar, fakeLog(), {
+    now: () => clock,
+    timers: {
+      setTimeout: (fn, ms) => {
+        const handle = { fn, ms }
+        timers.push(handle)
+        return handle
+      },
+      clearTimeout: (handle) => {
+        const i = timers.indexOf(handle as { fn: () => void, ms: number })
+        if (i >= 0)
+          timers.splice(i, 1)
+      },
+    },
+    ...options,
+  })
+  return { ...fake, relay, timers, set: (ms: number) => void (clock = ms), fire: () => timers.splice(0).forEach(t => t.fn()) }
+}
+
+test('the back display comes with every draw', async () => {
+  const { drawn, relay } = scheduled()
+  relay.setSlide(slide(2, 'Hooks'))
+  await settle()
+  assert.ok(drawn.some(e => e.id === 'back:clock'))
+  await relay.close()
+})
+
+test('a step is entered after the grace, not on a wheel notch too far', async () => {
+  const { relay, timers, set, fire, last } = scheduled()
+  relay.setSchedule(day)
+  relay.setSlide(slide(2, 'Hooks'))
+  await settle()
+  assert.equal(timers.length, 1, 'grace armed')
+  assert.equal(timers[0].ms, 10_000)
+  relay.setSlide(slide(1, null))
+  await settle()
+  assert.equal(timers.length, 0, 'back before the grace: nothing')
+
+  set(clockAt(9, 12))
+  relay.setSlide(slide(2, 'Hooks'))
+  await settle()
+  set(clockAt(9, 12, 10))
+  fire()
+  await settle()
+  assert.ok(String(last('back:delay')?.data).startsWith('! XPM2\n33 15 '), 'entered at 09:12, the time the slide was reached: +12')
+  await relay.close()
+})
+
+test('the schedule may arrive after the slide', async () => {
+  const { relay, timers } = scheduled()
+  relay.setSlide(slide(2, 'Hooks'))
+  await settle()
+  assert.equal(timers.length, 0)
+  relay.setSchedule(day)
+  await settle()
+  assert.equal(timers.length, 1, 'the slide already shown arms the grace')
+  await relay.close()
+})
+
+test('Start/Stop before any step starts the day; once a step is entered it does nothing', async () => {
+  const { relay, set, fire, last } = scheduled()
+  relay.setSchedule(day)
+  relay.setSlide(slide(1, null, { screen: 'welcome' }))
+  set(clockAt(9, 10))
+  relay.timer('toggle')
+  await settle()
+  relay.setSlide(slide(2, 'Hooks'))
+  await settle()
+  set(clockAt(9, 10, 30))
+  fire()
+  await settle()
+  set(clockAt(9, 20))
+  await relay.flush()
+  assert.ok(String(last('back:delay')?.data).startsWith('! XPM2\n9 15 '), 'the chain starts at 09:10: on time, a single 0')
+  relay.timer('toggle')
+  await settle()
+  assert.ok(String(last('back:delay')?.data).startsWith('! XPM2\n9 15 '), 'no timer armed, nothing happens')
+  await relay.close()
+})
+
+test('the day is saved on every change and loaded at start', async () => {
+  const saved: Day[] = []
+  const store = { load: () => ({ startedAt: clockAt(9, 0), entered: { 'chapter:Hooks': clockAt(9, 12) } }), save: (d: Day) => void saved.push(d) }
+  const { relay, set, fire, last } = scheduled(clockAt(9, 20), { store })
+  relay.setSchedule(day)
+  relay.setSlide(slide(3, 'Hooks'))
+  await settle()
+  assert.ok(String(last('back:delay')?.data).startsWith('! XPM2\n33 15 '), 'loaded: Hooks entered at 09:12, +12')
+  set(clockAt(9, 50))
+  relay.setSlide(slide(6, 'Effects'))
+  await settle()
+  fire()
+  await settle()
+  assert.equal(saved.length, 1)
+  assert.equal(saved[0].entered['chapter:Effects'], clockAt(9, 50))
+  await relay.close()
+})
+
+test('the schedule\'s warnings are logged once', async () => {
+  const fake = fakeBar()
+  const log = fakeLog()
+  const relay = createRelay(fake.bar, log)
+  relay.setSchedule({ ...day, warnings: ['slide 2: busy.duration "long" is not a duration (45m, 1h30m)'] })
+  relay.setSchedule({ ...day, warnings: ['slide 2: busy.duration "long" is not a duration (45m, 1h30m)'] })
+  await settle()
+  assert.deepEqual(log.lines.filter(l => l.includes('busy.duration')), ['warn slide 2: busy.duration "long" is not a duration (45m, 1h30m)'])
+  await relay.close()
+})

@@ -7,15 +7,17 @@
    and a missing bar shows up as one log line, not as an error. */
 import type { AudioPlayParams, DisplayClearParams, DisplayDrawParams, RequestOptions, SuccessResponse } from '@busy-app/busy-lib'
 import type { ResolvedConfig, SoundMoment } from './config.ts'
-import type { RenderState } from './render.ts'
+import type { RenderState, Scene } from './render.ts'
+import type { Day } from './schedule.ts'
 import type { Sound, SoundPlayer } from './sounds.ts'
 import type { Timer, TimerAction } from './timer.ts'
-import type { Element, SlideInfo } from './types.ts'
+import type { Element, Schedule, SlideInfo } from './types.ts'
 import { DEFAULT_SOUNDS, resolveConfig } from './config.ts'
+import { renderBack } from './render-back.ts'
 import { render } from './render.ts'
-import { EMPTY_DAY } from './schedule.ts'
+import { current, EMPTY_DAY, enter, startDay, stepOf } from './schedule.ts'
 import { APPLICATION, stockPlayer } from './sounds.ts'
-import { act, adhoc, remaining, status, WARN_MS } from './timer.ts'
+import { act, adhoc, armed, remaining, status, WARN_MS } from './timer.ts'
 
 const PRIORITY = 50
 export const TIMEOUT_MS = 1500
@@ -41,18 +43,31 @@ export interface Log {
   debug?: (message: string) => void
 }
 
+/** Where the day survives a restart of the dev server (`.busybar-day.json`). */
+export interface DayStore {
+  load: () => Day | null
+  save: (day: Day) => unknown
+}
+
 export interface RelayOptions {
   now?: () => number
   /** Resolves sounds to play; stock sounds only by default. */
   sounds?: SoundPlayer
   config?: ResolvedConfig
+  store?: DayStore
+  /** The grace timer, injectable for tests. */
+  timers?: { setTimeout: (fn: () => void, ms: number) => unknown, clearTimeout: (handle: unknown) => void }
 }
 
 export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
-  const { now = Date.now, sounds = stockPlayer } = options
+  const { now = Date.now, sounds = stockPlayer, store } = options
+  const timers = options.timers ?? { setTimeout: (fn, ms) => setTimeout(fn, ms), clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) }
   let config = options.config ?? resolveConfig()
-  const state: RenderState = { slide: null, timer: null, setting: null, schedule: null, day: EMPTY_DAY }
+  const state: RenderState = { slide: null, timer: null, setting: null, schedule: null, day: store?.load() ?? EMPTY_DAY }
   let lastSlide = ''
+  let lastSchedule = ''
+  /* A step whose slide is shown, but not yet for the grace. */
+  let pending: { step: number, handle: unknown } | null = null
   /* The duration the wheel reopens on: the first time, or the last one set. */
   let lastSettingMs = FIRST_SETTING_MS
 
@@ -76,11 +91,67 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
       return
     lastSlide = key
     state.slide = slide
+    watchEntry()
     /* Changing slide acknowledges a finished timer; a running or waiting one
        carries on whatever the slide. */
     if (state.timer && status(state.timer, now()) === 'finished')
       state.timer = null
     void flush()
+  }
+
+  /** The deck's schedule, from the browser: once, then when the deck
+      changes. Entries are keyed by step, so they survive a re-indexed deck. */
+  function setSchedule(schedule: Schedule) {
+    const key = JSON.stringify(schedule)
+    if (key === lastSchedule)
+      return
+    lastSchedule = key
+    state.schedule = schedule
+    for (const warning of schedule.warnings)
+      log.warn(warning)
+    cancelEntry()
+    watchEntry()
+    void flush()
+  }
+
+  function setDay(day: Day) {
+    if (day === state.day)
+      return
+    state.day = day
+    log.debug?.(`day: ${JSON.stringify(day)}`)
+    void store?.save(day)
+    void flush()
+  }
+
+  /** Arms the grace when the slide belongs to a step later than the current
+      one; a slide change before it fires cancels or re-arms it. The entry
+      time is the time the slide was reached. */
+  function watchEntry() {
+    const { schedule, slide } = state
+    if (!schedule || !slide)
+      return cancelEntry()
+    const step = stepOf(schedule, slide.no)
+    if (step <= current(schedule, state.day))
+      return cancelEntry()
+    if (pending?.step === step)
+      return
+    cancelEntry()
+    const since = now()
+    pending = {
+      step,
+      handle: timers.setTimeout(() => {
+        pending = null
+        if (state.schedule)
+          setDay(enter(state.schedule, state.day, step, since))
+      }, config.schedule.graceMs),
+    }
+  }
+
+  function cancelEntry() {
+    if (!pending)
+      return
+    timers.clearTimeout(pending.handle)
+    pending = null
   }
 
   /** Swaps the timer, playing the start sound when a timer or a phase
@@ -95,6 +166,12 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
 
   function timer(action: TimerAction) {
     log.debug?.(`timer: ${action}`)
+    /* Start/Stop on the welcome slide: the day begins now (spec §2). */
+    if (action === 'toggle' && !state.timer && state.schedule && current(state.schedule, state.day) < 0 && !armed(state.slide, config)) {
+      log.info('the day starts now.')
+      setDay(startDay(state.day, now()))
+      return
+    }
     replace(act(state.timer, action, state.slide, now(), config))
   }
 
@@ -188,7 +265,13 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
       for (;;) {
         state.setting = activeSetting()
         ring()
-        const scene = render(state, now(), config)
+        const front = render(state, now(), config)
+        const back = renderBack(state, now(), config)
+        const scene: Scene = {
+          elements: [...front.elements, ...back.elements],
+          nextAt: front.nextAt === null ? back.nextAt : back.nextAt === null ? front.nextAt : Math.min(front.nextAt, back.nextAt),
+          led: front.led,
+        }
         nextAt = scene.nextAt
         const elements = scene.elements
         const changed = elements.filter(e => shown?.get(e.id) !== JSON.stringify(e))
@@ -226,8 +309,12 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
       sending = false
     }
     /* When the bar fails, the 5 s retry takes over. */
-    if (nextAt !== null && !failing && !closed)
+    /* The back's clock makes every scene tick once a minute: that timer
+       must never keep a process alive (tests, `slidev export`). */
+    if (nextAt !== null && !failing && !closed) {
       tick = setTimeout(() => void flush(), Math.max(0, nextAt - now()))
+      tick.unref?.()
+    }
   }
 
   async function send(changed: Element[], removed: string[], led?: string) {
@@ -252,13 +339,14 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
       another server shows. */
   async function close() {
     closed = true
+    cancelEntry()
     clearTimeout(retry)
     clearTimeout(tick)
     if (lastSlide)
       await bar.DisplayClear({ application_name: APPLICATION }, { timeout: TIMEOUT_MS }).catch(() => {})
   }
 
-  return { setSlide, timer, setting: () => activeSetting() !== null, openSetting, adjust, startSetting, closeSetting, configure, redraw, close, flush }
+  return { setSlide, setSchedule, timer, setting: () => activeSetting() !== null, openSetting, adjust, startSetting, closeSetting, configure, redraw, close, flush }
 }
 
 /** Whether redrawing `after` over `before` would leave some of `before`'s
