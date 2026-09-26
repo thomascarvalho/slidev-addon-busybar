@@ -37,3 +37,36 @@ export function pixels(id: string, grid: string[], palette: Record<string, strin
 export function label(id: string, text: string, font: DeviceFont, color: string, x: number, y: number): Element {
   return { id, type: 'text', text, font, color: toBarColor(color), x, y, align: 'top_left' }
 }
+
+/* 3×5 digits, scaled: big numbers the bar's fonts cannot draw (they top
+   out at 12 px). Used on the back display for the clock and countdowns. */
+const GLYPHS: Record<string, string[]> = {
+  '0': ['###', '#.#', '#.#', '#.#', '###'],
+  '1': ['.#.', '##.', '.#.', '.#.', '###'],
+  '2': ['###', '..#', '###', '#..', '###'],
+  '3': ['###', '..#', '###', '..#', '###'],
+  '4': ['#.#', '#.#', '###', '..#', '..#'],
+  '5': ['###', '#..', '###', '..#', '###'],
+  '6': ['###', '#..', '###', '#.#', '###'],
+  '7': ['###', '..#', '..#', '..#', '..#'],
+  '8': ['###', '#.#', '###', '#.#', '###'],
+  '9': ['###', '#.#', '###', '..#', '###'],
+  ':': ['...', '.#.', '...', '.#.', '...'],
+  '+': ['...', '.#.', '###', '.#.', '...'],
+  '-': ['...', '...', '###', '...', '...'],
+  ' ': ['...', '...', '...', '...', '...'],
+}
+
+/** Width in pixels of `text` drawn by `digits` at `scale`. */
+export function digitsWidth(text: string, scale: number): number {
+  return text.length ? (text.length * 4 - 1) * scale : 0
+}
+
+/** `text` (digits, `:`, `+`, `-`) as one pixel-art element, `scale` pixels
+    per dot, its top-left (or top-right with `align: 'right'`) at (x, y). */
+export function digits(id: string, text: string, color: string, x: number, y: number, scale = 3, align: 'left' | 'right' = 'left'): Element {
+  const rows = Array.from({ length: 5 }, (_, r) => [...text].map(c => (GLYPHS[c] ?? GLYPHS[' '])[r]).join('.'))
+  const grid = rows.flatMap(row => Array.from({ length: scale }, () => [...row].flatMap(c => Array.from({ length: scale }, () => c)).join('')))
+  const left = align === 'right' ? x - digitsWidth(text, scale) : x
+  return pixels(id, grid, { '#': color }, left, y)
+}

@@ -6,7 +6,8 @@
 import type { DeviceFont } from '@busy-app/busy-lib'
 import type { ResolvedConfig, ScreenStyle } from './config.ts'
 import type { Timer } from './timer.ts'
-import type { Element, SlideInfo } from './types.ts'
+import type { Day } from './schedule.ts'
+import type { Element, Schedule, SlideInfo } from './types.ts'
 import { resolveConfig } from './config.ts'
 import { SCREEN, textWidth } from './draw.ts'
 import { formatClock } from './duration.ts'
@@ -26,6 +27,9 @@ export interface RenderState {
   timer: Timer | null
   /** A timer being set with the wheel: duration and expiry. */
   setting: { ms: number, until: number } | null
+  /** The day's schedule and where we are in it (back display, resume times). */
+  schedule: Schedule | null
+  day: Day
 }
 
 const WHITE = '#FFFFFFFF'

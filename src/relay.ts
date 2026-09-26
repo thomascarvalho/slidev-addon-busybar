@@ -13,6 +13,7 @@ import type { Timer, TimerAction } from './timer.ts'
 import type { Element, SlideInfo } from './types.ts'
 import { DEFAULT_SOUNDS, resolveConfig } from './config.ts'
 import { render } from './render.ts'
+import { EMPTY_DAY } from './schedule.ts'
 import { APPLICATION, stockPlayer } from './sounds.ts'
 import { act, adhoc, remaining, status, WARN_MS } from './timer.ts'
 
@@ -50,7 +51,7 @@ export interface RelayOptions {
 export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
   const { now = Date.now, sounds = stockPlayer } = options
   let config = options.config ?? resolveConfig()
-  const state: RenderState = { slide: null, timer: null, setting: null }
+  const state: RenderState = { slide: null, timer: null, setting: null, schedule: null, day: EMPTY_DAY }
   let lastSlide = ''
   /* The duration the wheel reopens on: the first time, or the last one set. */
   let lastSettingMs = FIRST_SETTING_MS

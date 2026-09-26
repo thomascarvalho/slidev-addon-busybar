@@ -6,6 +6,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { resolveConfig } from './config.ts'
 import { rect } from './draw.ts'
+import { EMPTY_DAY } from './schedule.ts'
 import { render as renderScene } from './render.ts'
 
 const MIN = 60_000
@@ -19,8 +20,8 @@ function running(leftMs: number, now = 0): Timer {
 }
 
 /** `setting: null` by default: most tests here are unrelated to it. */
-function render(state: Omit<RenderState, 'setting'> & Partial<Pick<RenderState, 'setting'>>, now: number, config?: ResolvedConfig) {
-  return renderScene({ setting: null, ...state }, now, config)
+function render(state: Omit<RenderState, 'setting' | 'schedule' | 'day'> & Partial<Pick<RenderState, 'setting' | 'schedule' | 'day'>>, now: number, config?: ResolvedConfig) {
+  return renderScene({ setting: null, schedule: null, day: EMPTY_DAY, ...state }, now, config)
 }
 
 const byId = (elements: { id: string }[], id: string) => elements.find(e => e.id === id) as Record<string, unknown> | undefined
