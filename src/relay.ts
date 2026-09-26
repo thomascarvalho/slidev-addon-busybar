@@ -79,6 +79,8 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
   let shownLed: string | undefined
   let sending = false
   let failing = false
+  /* Whether we ever drew: a relay that never could leaves the bar alone on exit. */
+  let touched = false
   let retry: ReturnType<typeof setTimeout> | undefined
   /* Next render of a scene that changes on its own (countdown, blinking). */
   let tick: ReturnType<typeof setTimeout> | undefined
@@ -334,6 +336,7 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
       await bar.DisplayClear({ application_name: APPLICATION }, options)
     else if (removed.length)
       await bar.DisplayClear({ application_name: APPLICATION, element_ids: removed }, options)
+    touched = true
     if (changed.length) {
       await bar.DisplayDraw({
         application_name: APPLICATION,
@@ -352,9 +355,14 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
     cancelEntry()
     clearTimeout(retry)
     clearTimeout(tick)
-    if (lastSlide)
+    if (touched)
       await bar.DisplayClear({ application_name: APPLICATION }, { timeout: TIMEOUT_MS }).catch(() => {})
   }
+
+  /* Right away: clears what a previous server left (a restart draws nothing
+     until a page posts again, and Vite only reloads a visible page), and
+     shows the clock, with the day loaded from the store. */
+  void flush()
 
   return { setSlide, setSchedule, timer, setting: () => activeSetting() !== null, openSetting, adjust, startSetting, closeSetting, configure, redraw, close, flush }
 }

@@ -90,8 +90,8 @@ test('does not redraw an unchanged element, clears the ones that go away', async
 test('unreachable bar: one warning, everything redrawn when it comes back', async () => {
   const { bar, calls, state } = fakeBar()
   const log = fakeLog()
-  const relay = createRelay(bar, log)
   state.fail = { name: 'TypeError', message: 'fetch failed' }
+  const relay = createRelay(bar, log)
   relay.setSlide(slide(2, 'Hooks'))
   await settle()
   relay.setSlide(slide(5, 'Effects'))
@@ -127,10 +127,24 @@ test('redraw draws everything again at once, even an unchanged screen', async ()
   await relay.close()
 })
 
-test('a relay that showed nothing clears nothing on exit (slidev export)', async () => {
-  const { bar, calls } = fakeBar()
-  await createRelay(bar, fakeLog()).close()
-  assert.deepEqual(calls, [])
+test('at start, the relay clears what a previous server left and shows the clock', async () => {
+  const { bar, calls, drawn } = fakeBar()
+  const relay = createRelay(bar, fakeLog())
+  await settle()
+  assert.deepEqual(calls, ['clear all'], 'nothing on the front yet')
+  assert.ok(drawn.some(e => e.id === 'back:clock'))
+  await relay.close()
+  assert.deepEqual(calls, ['clear all', 'clear all'], 'and clears its clock on exit')
+})
+
+test('a relay that could never draw clears nothing on exit', async () => {
+  const { bar, calls, state } = fakeBar()
+  state.fail = { message: 'fetch failed' }
+  const relay = createRelay(bar, fakeLog())
+  await settle()
+  const before = calls.length
+  await relay.close()
+  assert.equal(calls.length, before)
 })
 
 /* Timers: simulated clock and timers. */

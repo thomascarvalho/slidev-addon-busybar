@@ -26,14 +26,11 @@ const schedulePayload = computed(() => {
 })
 
 if (import.meta.env.DEV && !isPrintMode.value && !isEmbedded.value) {
-  watch(schedulePayload, (body) => {
-    fetch('/__busy/schedule', { method: 'POST', headers: { 'content-type': 'application/json' }, body })
-      .catch(() => {})
-  }, { immediate: true })
-  watch(payload, (body) => {
-    fetch('/__busy/slide', { method: 'POST', headers: { 'content-type': 'application/json' }, body })
-      .catch(() => {})
-  }, { immediate: true })
+  const post = (path: string, body: string) => {
+    fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body }).catch(() => {})
+  }
+  watch(schedulePayload, body => post('/__busy/schedule', body), { immediate: true })
+  watch(payload, body => post('/__busy/slide', body), { immediate: true })
 }
 </script>
 
