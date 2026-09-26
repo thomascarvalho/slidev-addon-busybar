@@ -6,7 +6,7 @@
 import type { BusyFrontmatter } from './src/slides'
 import { configs, useNav } from '@slidev/client'
 import { computed, watch } from 'vue'
-import { slideInfo } from './src/slides'
+import { schedule, slideInfo } from './src/slides'
 
 const { slides, currentSlideNo, currentSlideRoute, isPrintMode, isEmbedded } = useNav()
 
@@ -18,7 +18,18 @@ const payload = computed(() => {
   return JSON.stringify(slideInfo(busy, currentSlideNo.value - 1, title))
 })
 
+/* The day's schedule, from every slide's frontmatter: posted once, then
+   whenever the deck changes. */
+const schedulePayload = computed(() => {
+  const busy = slides.value.map(route => route.meta.slide.frontmatter?.busy as BusyFrontmatter | undefined)
+  return JSON.stringify(schedule(busy))
+})
+
 if (import.meta.env.DEV && !isPrintMode.value && !isEmbedded.value) {
+  watch(schedulePayload, (body) => {
+    fetch('/__busy/schedule', { method: 'POST', headers: { 'content-type': 'application/json' }, body })
+      .catch(() => {})
+  }, { immediate: true })
   watch(payload, (body) => {
     fetch('/__busy/slide', { method: 'POST', headers: { 'content-type': 'application/json' }, body })
       .catch(() => {})

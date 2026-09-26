@@ -23,7 +23,7 @@ import type { Plugin, WebSocketClient } from 'vite'
 import type { BusybarConfig, ControlAction, ResolvedConfig } from './config.ts'
 import type { Sound } from './sounds.ts'
 import type { TimerAction } from './timer.ts'
-import type { SlideInfo } from './types.ts'
+import type { Schedule, SlideInfo, Step } from './types.ts'
 import { existsSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
 import process from 'node:process'
@@ -31,13 +31,16 @@ import { BusyBar } from '@busy-app/busy-lib'
 import { loadConfigFromFile, loadEnv } from 'vite'
 import { resolveConfig } from './config.ts'
 import { buttonAction, route, settingAction, wheelAction } from './controls.ts'
+import { createDayStore, DAY_FILE } from './day-store.ts'
 import { createControls, SwitchPosition } from './input.ts'
 import { createRelay, TIMEOUT_MS } from './relay.ts'
 import { createSoundStore } from './sound-store.ts'
 import { deckFile, invalidSoundMessage, parseSound, STOCK_SOUNDS } from './sounds.ts'
 import { listenToBar } from './stream.ts'
 
-const MAX_BODY = 4096
+/* A schedule is a few dozen steps; a slide a few lines. */
+const MAX_BODY = 65_536
+const MAX_STEPS = 200
 const CONFIG_FILES = ['busybar.config.ts', 'busybar.config.mts', 'busybar.config.js', 'busybar.config.mjs']
 
 export function busybar(): Plugin {
@@ -97,7 +100,8 @@ export function busybar(): Plugin {
       const addr = env.BUSYBAR_ADDR || '10.0.4.20'
       const bar = new BusyBar({ addr, HTTPAccessPassword: env.BUSYBAR_PASSWORD || undefined, timeout: TIMEOUT_MS })
       const sounds = createSoundStore(bar, log, { root })
-      const relay = createRelay(bar, log, { sounds, config })
+      const store = createDayStore(resolve(root, DAY_FILE), undefined, message => log.debug?.(message))
+      const relay = createRelay(bar, log, { sounds, config, store })
       log.info(`relay to ${addr}${configFile ? `, settings from ${CONFIG_FILES.find(name => configFile.endsWith(name))}` : ''}.`)
 
       /* The deck's WAV files, watched: an edited file is uploaded again. */
@@ -261,6 +265,14 @@ export function busybar(): Plugin {
           }
           return
         }
+        if (req.url === '/schedule') {
+          const schedule = body && parseSchedule(body)
+          if (!schedule)
+            return reply(res, 400)
+          reply(res, 204)
+          relay.setSchedule(schedule)
+          return
+        }
         if (req.url === '/timer') {
           const action = body?.action
           if (!isTimerAction(action))
@@ -340,4 +352,34 @@ export function parseSlide(body: Record<string, unknown>): SlideInfo | null {
     text: str(body.text),
     sound: body.sound === false ? false : str(body.sound),
   }
+}
+
+/** Minutes since midnight, or `null` for none; `undefined` when unreadable. */
+function minutes(value: unknown): number | null | undefined {
+  if (value === null || value === undefined)
+    return null
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value < 1440 ? value : undefined
+}
+
+function parseStep(value: unknown): Step | null {
+  const v = value as Record<string, unknown> | null
+  const from = int(v?.from)
+  const kind = str(v?.kind)
+  const durationMs = int(v?.durationMs)
+  const at = minutes(v?.at)
+  if (!v || from === null || from < 1 || kind === null || durationMs === null || at === undefined)
+    return null
+  return { from, kind, label: v.label === null ? null : str(v.label), durationMs, at }
+}
+
+export function parseSchedule(body: Record<string, unknown>): Schedule | null {
+  const start = minutes(body.start)
+  const end = minutes(body.end)
+  if (start === undefined || end === undefined || !Array.isArray(body.steps))
+    return null
+  const steps = body.steps.slice(0, MAX_STEPS).map(parseStep)
+  if (steps.some(s => s === null))
+    return null
+  const warnings = (Array.isArray(body.warnings) ? body.warnings : []).map(str).filter((s): s is string => s !== null).slice(0, 20)
+  return { start, end, steps: steps as Step[], warnings }
 }
