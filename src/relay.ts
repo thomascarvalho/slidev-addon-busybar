@@ -5,24 +5,26 @@
    The talk must never depend on the bar: every call has a short timeout, only
    one paint is in flight at a time (the latest scene replaces pending ones),
    and a missing bar shows up as one log line, not as an error. */
-import type { Log, ResolvedConfig, SoundMoment } from './config.ts'
+import type { ResolvedConfig, SoundMoment } from './config.ts'
 import type { DayStore, DayTrackerOptions } from './day.ts'
 import type { Bar } from './painter.ts'
 import type { RenderState, Scene } from './render.ts'
+import type { Log } from './settings.ts'
 import type { Sound, SoundPlayer } from './sounds.ts'
 import type { Timer, TimerAction } from './timer.ts'
 import type { Schedule, SlideInfo } from './types.ts'
 import { DEFAULT_SOUNDS, resolveConfig } from './config.ts'
 import { createDayTracker } from './day.ts'
-import { createPainter, describeBarError, TIMEOUT_MS } from './painter.ts'
+import { describeBarError, messageOf } from './errors.ts'
+import { createPainter, TIMEOUT_MS } from './painter.ts'
 import { renderBack } from './render-back.ts'
 import { render } from './render.ts'
 import { stockPlayer } from './sounds.ts'
 import { act, adhoc, armed, remaining, status, WARN_MS } from './timer.ts'
 
+export type { DayStore } from './day.ts'
 export type { Bar } from './painter.ts'
 export { TIMEOUT_MS } from './painter.ts'
-export type { DayStore } from './day.ts'
 
 const RETRY_MS = 5000
 /** How long the wheel may go untouched before the setting closes. */
@@ -32,7 +34,7 @@ export const FIRST_SETTING_MS = 5 * 60_000
 export const MIN_SETTING_MS = 60_000
 export const MAX_SETTING_MS = 120 * 60_000
 
-export type { Log } from './config.ts'
+export type { Log } from './settings.ts'
 
 export interface RelayOptions {
   now?: () => number
@@ -44,7 +46,24 @@ export interface RelayOptions {
   timers?: DayTrackerOptions['timers']
 }
 
-export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
+/** What the server and the bar's controls drive. */
+export interface Relay {
+  setSlide: (slide: SlideInfo) => void
+  setSchedule: (schedule: Schedule) => void
+  timer: (action: TimerAction) => void
+  /** Whether a timer is being set with the wheel. */
+  setting: () => boolean
+  openSetting: () => void
+  adjust: (delta: number) => void
+  startSetting: () => void
+  closeSetting: () => void
+  configure: (config: ResolvedConfig) => void
+  redraw: () => void
+  close: () => Promise<void>
+  flush: () => Promise<void>
+}
+
+export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}): Relay {
   const { now = Date.now, sounds = stockPlayer } = options
   let config = options.config ?? resolveConfig()
   const state: Omit<RenderState, 'schedule' | 'day'> = { slide: null, timer: null, setting: null }
@@ -199,7 +218,7 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}) {
     if (!params)
       return
     bar.AudioPlay(params, { timeout: TIMEOUT_MS })
-      .catch(error => log.debug?.(`sound not played: ${(error as Error).message}`))
+      .catch(error => log.debug?.(`sound not played: ${messageOf(error)}`))
   }
 
   /** Both displays, as one scene: the front's LED, the earliest wake-up. */

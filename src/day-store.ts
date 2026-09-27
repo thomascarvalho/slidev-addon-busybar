@@ -5,6 +5,7 @@ import type { DayStore } from './day.ts'
 import type { Day } from './schedule.ts'
 import { readFileSync } from 'node:fs'
 import { writeFile } from 'node:fs/promises'
+import { messageOf } from './errors.ts'
 
 export const DAY_FILE = '.busybar-day.json'
 
@@ -37,7 +38,7 @@ export function createDayStore(file: string, today: () => string = () => localDa
         await writeFile(file, JSON.stringify({ date: today(), ...day }))
       }
       catch (error) {
-        warn?.(`day not saved to ${file}: ${(error as Error).message}`)
+        warn?.(`day not saved to ${file}: ${messageOf(error)}`)
       }
     },
   }

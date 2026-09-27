@@ -1,6 +1,6 @@
 import type { Bar, RelayOptions } from './relay.ts'
-import type { Sound } from './sounds.ts'
 import type { Day } from './schedule.ts'
+import type { Sound } from './sounds.ts'
 import type { Schedule, SlideInfo } from './types.ts'
 import assert from 'node:assert/strict'
 import { mock, test } from 'node:test'
@@ -513,7 +513,6 @@ test('a break ending plays sounds.breakOver from the config, not timeUp', async 
   assert.deepEqual(fake.played, ['shared/volume_change.snd', 'shared/calendar_event_starts.snd'], 'the warning, then the configured breakOver sound')
   await fake.relay.close()
 })
-
 
 const MIN = 60_000
 const clockAt = (h: number, m: number, s = 0) => new Date(2026, 8, 26, h, m, s).getTime()

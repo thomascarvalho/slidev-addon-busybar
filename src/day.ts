@@ -27,7 +27,19 @@ export interface DayTrackerOptions {
   onChange?: (day: Day) => void
 }
 
-export function createDayTracker(options: DayTrackerOptions) {
+export interface DayTracker {
+  readonly day: Day
+  readonly schedule: Schedule | null
+  setSchedule: (schedule: Schedule) => void
+  setSlide: (slide: SlideInfo | null) => void
+  /** "The day begins now"; `false` when a step is already entered. */
+  start: () => boolean
+  /** Forgets a rehearsal earlier in the day; `false` when there is nothing to forget. */
+  reset: () => boolean
+  close: () => void
+}
+
+export function createDayTracker(options: DayTrackerOptions): DayTracker {
   const { now = Date.now, store, grace, onChange } = options
   const timers = options.timers ?? { setTimeout: (fn, ms) => setTimeout(fn, ms), clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) }
   let day: Day = store?.load() ?? EMPTY_DAY

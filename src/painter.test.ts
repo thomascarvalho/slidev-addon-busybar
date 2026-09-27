@@ -2,7 +2,8 @@ import type { Bar } from './painter.ts'
 import type { Element } from './types.ts'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createPainter, describeBarError } from './painter.ts'
+import { describeBarError } from './errors.ts'
+import { createPainter } from './painter.ts'
 
 function fakeBar() {
   const calls: string[] = []

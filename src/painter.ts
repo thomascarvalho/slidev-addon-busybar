@@ -26,7 +26,17 @@ export interface PainterOptions {
   debug?: (message: string) => void
 }
 
-export function createPainter(bar: Bar, options: PainterOptions = {}) {
+export interface Painter {
+  /** Sends what differs from the last scene; `false` when nothing did.
+      Throws when the bar does: the caller owns the retry. */
+  paint: (scene: Scene) => Promise<boolean>
+  /** Forgets what the bar shows: the next paint clears everything first. */
+  forget: () => void
+  /** Clears our elements, without insisting: on exit. */
+  clear: () => Promise<void>
+}
+
+export function createPainter(bar: Bar, options: PainterOptions = {}): Painter {
   /* What the bar shows, by element id; `null` when we do not know (at start,
      after a failure), which forces a full clear: a server killed abruptly may
      have left its elements on screen. */
@@ -96,16 +106,4 @@ export function createPainter(bar: Bar, options: PainterOptions = {}) {
 function morphs(before: Element, after: Element): boolean {
   const fill = (e: Element) => (e as { fill?: string }).fill
   return before.type !== after.type || fill(before) !== fill(after)
-}
-
-/** A bar error, in words a trainer can act on. */
-export function describeBarError(error: unknown): string {
-  const e = error as { status?: number, name?: string, message?: string }
-  if (e.status === 409)
-    return 'BUSY Bar refused to draw (409). Set the switch on the bar to APPS.'
-  if (e.status === 403)
-    return 'BUSY Bar denied access (403). Check BUSYBAR_PASSWORD in .env.local.'
-  if (e.name === 'TimeoutError')
-    return 'BUSY Bar not responding. The talk goes on without it; retrying every 5 s.'
-  return `BUSY Bar unreachable (${e.message ?? String(error)}). The talk goes on without it; retrying every 5 s.`
 }

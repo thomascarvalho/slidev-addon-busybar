@@ -4,7 +4,7 @@
    the sounds and the day store; the controls need the relay; a reloaded
    config reaches the relay, the controls and the sounds. */
 import type { ViteDevServer } from 'vite'
-import type { Log, Settings } from './config.ts'
+import type { Log, Settings } from './settings.ts'
 import { resolve } from 'node:path'
 import { BusyBar } from '@busy-app/busy-lib'
 import { wireBarControls } from './bar-controls.ts'

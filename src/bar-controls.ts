@@ -6,7 +6,7 @@
    that the wheel's setting is never bypassed. */
 import type { ViteDevServer, WebSocketClient } from 'vite'
 import type { ControlAction, Controls, ResolvedConfig, SlidevAction } from './config.ts'
-import type { createRelay, Log } from './relay.ts'
+import type { Log, Relay } from './relay.ts'
 import type { TimerAction } from './timer.ts'
 import { Button, createControls, SwitchPosition } from './input.ts'
 import { listenToBar } from './stream.ts'
@@ -57,10 +57,9 @@ export function settingAction(action: TimerAction | ControlAction): 'start' | 'c
   return null
 }
 
-
 export interface BarControlsOptions {
   server: ViteDevServer
-  relay: ReturnType<typeof createRelay>
+  relay: Relay
   log: Log
   addr: string
   password?: string
@@ -144,8 +143,9 @@ export function wireBarControls({ server, relay, log, addr, password }: BarContr
       stops with `controls: false`. */
   function update(next: ResolvedConfig) {
     config = next
-    if (next.controls && !stream)
+    if (next.controls && !stream) {
       stream = listenToBar(log, { addr, password, onInput: controls.input, onDisconnect: controls.reset })
+    }
     else if (!next.controls && stream) {
       stream.close()
       stream = null

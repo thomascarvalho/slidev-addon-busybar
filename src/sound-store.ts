@@ -4,13 +4,15 @@
    plays instead: the trainer never loses the signal silently. */
 import type { AssetsDeleteParams, AssetsUploadParams, AudioPlayParams, RequestOptions, StorageList, StorageReadDirectoryParams, SuccessResponse } from '@busy-app/busy-lib'
 import type { ViteDevServer } from 'vite'
-import type { Log, ResolvedConfig } from './config.ts'
+import type { ResolvedConfig } from './config.ts'
+import type { Log } from './settings.ts'
 import type { Sound, SoundPlayer } from './sounds.ts'
 import { Buffer } from 'node:buffer'
 import { createHash } from 'node:crypto'
 import { readFile as fsReadFile } from 'node:fs/promises'
 import { relative, resolve } from 'node:path'
-import { APPLICATION, deckFile, invalidSoundMessage, parseSound, stockPlayer, STOCK_SOUNDS } from './sounds.ts'
+import { messageOf } from './errors.ts'
+import { APPLICATION, deckFile, invalidSoundMessage, parseSound, STOCK_SOUNDS, stockPlayer } from './sounds.ts'
 import { decodeWav, MAX_SECONDS } from './wav.ts'
 
 const UPLOAD_TIMEOUT_MS = 10_000
@@ -29,7 +31,8 @@ export interface SoundStoreOptions {
   readFile?: (path: string) => Promise<Uint8Array>
 }
 
-export function createSoundStore(bar: SoundBar, log: Log, options: SoundStoreOptions): SoundPlayer & {
+export interface SoundStore extends SoundPlayer {
+  /** Forgets every upload: at start, the bar's assets are wiped. */
   reset: () => void
   prepare: (sound: Sound) => void
   checkStock: (sounds: [string, Sound][]) => Promise<void>
@@ -38,7 +41,9 @@ export function createSoundStore(bar: SoundBar, log: Log, options: SoundStoreOpt
       as the store's own warnings. */
   warnOnce: (message: string) => void
   idle: () => Promise<void>
-} {
+}
+
+export function createSoundStore(bar: SoundBar, log: Log, options: SoundStoreOptions): SoundStore {
   const { root, readFile = fsReadFile } = options
   /* Asset of each deck file, by absolute path. */
   const ready = new Map<string, string>()
@@ -58,7 +63,7 @@ export function createSoundStore(bar: SoundBar, log: Log, options: SoundStoreOpt
   }
 
   function enqueue(job: () => Promise<void>) {
-    queue = queue.then(job).catch(error => log.debug?.(`sound store: ${(error as Error).message}`))
+    queue = queue.then(job).catch(error => log.debug?.(`sound store: ${messageOf(error)}`))
   }
 
   async function upload(file: string) {
@@ -77,7 +82,7 @@ export function createSoundStore(bar: SoundBar, log: Log, options: SoundStoreOpt
       decoded = decodeWav(bytes)
     }
     catch (error) {
-      return warnOnce(`${file}: ${(error as Error).message}. Convert it to WAV (ffmpeg -i ${file} ${file.replace(/\.[^./]*$/, '')}.converted.wav); playing the default sound instead.`)
+      return warnOnce(`${file}: ${messageOf(error)}. Convert it to WAV (ffmpeg -i ${file} ${file.replace(/\.[^./]*$/, '')}.converted.wav); playing the default sound instead.`)
     }
     if (decoded.truncated)
       warnOnce(`${file}: longer than ${MAX_SECONDS} s, cut at ${MAX_SECONDS} s.`)
@@ -91,7 +96,7 @@ export function createSoundStore(bar: SoundBar, log: Log, options: SoundStoreOpt
       }
       catch (error) {
         /* The bar is away: the next prepare tries again. */
-        log.debug?.(`sound ${file} not uploaded: ${(error as Error).message}`)
+        log.debug?.(`sound ${file} not uploaded: ${messageOf(error)}`)
         return
       }
       uploaded.add(asset)
@@ -166,8 +171,6 @@ export function createSoundStore(bar: SoundBar, log: Log, options: SoundStoreOpt
    the one a slide names in `busy.sound` (uploaded when the slide is shown,
    long before its timer can end). Invalid values warn once and never block
    anything: the deck's sound plays instead. */
-type SoundStore = ReturnType<typeof createSoundStore>
-
 export function createDeckSounds(server: ViteDevServer, sounds: SoundStore, root: string) {
   const watched = new Set<string>()
 

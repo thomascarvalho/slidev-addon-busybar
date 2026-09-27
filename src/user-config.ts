@@ -8,6 +8,7 @@ import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { loadConfigFromFile } from 'vite'
 import { resolveConfig } from './config.ts'
+import { messageOf } from './errors.ts'
 
 const CONFIG_FILES = ['busybar.config.ts', 'busybar.config.mts', 'busybar.config.js', 'busybar.config.mjs']
 
@@ -31,7 +32,7 @@ export function createUserConfig(server: ViteDevServer, root: string, mode: stri
       return await load()
     }
     catch (error) {
-      log.warn(`${file}: ${(error as Error).message}. Using the defaults.`)
+      log.warn(`${file}: ${messageOf(error)}. Using the defaults.`)
       return resolveConfig()
     }
   }
@@ -50,7 +51,7 @@ export function createUserConfig(server: ViteDevServer, root: string, mode: stri
           onChange(next)
           log.info('settings reloaded.')
         })
-        .catch(error => log.warn(`${file}: ${(error as Error).message}. Keeping the previous settings.`))
+        .catch(error => log.warn(`${file}: ${messageOf(error)}. Keeping the previous settings.`))
     })
   }
 
