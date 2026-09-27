@@ -1,9 +1,9 @@
 /* Activity timers. A timer lives in the relay, independently of the slide:
    going back a few slides during a workshop does not reset it. */
 import type { Labels, ResolvedConfig } from './config.ts'
+import type { Phase } from './duration.ts'
 import type { Sound } from './sounds.ts'
 import type { SlideInfo } from './types.ts'
-import type { Phase } from './duration.ts'
 import { parsePhases } from './duration.ts'
 import { parseSound } from './sounds.ts'
 

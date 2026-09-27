@@ -34,6 +34,4 @@ if (import.meta.env.DEV && !isPrintMode.value && !isEmbedded.value) {
 }
 </script>
 
-<template>
-  <!-- Nothing to show: this component only follows the navigation. -->
-</template>
+<!-- No template: this component only follows the navigation. -->

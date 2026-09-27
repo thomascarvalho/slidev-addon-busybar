@@ -4,13 +4,14 @@
    Capitals are drawn without their accent. */
 
 /* Latin-1, Latin Extended-A, general punctuation (dashes, quotes, …), €. */
-const DRAWABLE = /[\x20-\x7E -ſ‐-‧‰-⁞€]/u
+// eslint-disable-next-line regexp/no-obscure-range -- Unicode blocks, by design
+const DRAWABLE = /[\x20-\x7E\xA0-ſ‐-‧‰-⁞€]/u
 
 export function toDeviceText(text: string): string {
   return [...text.normalize('NFC')]
     .filter(c => DRAWABLE.test(c))
     .join('')
-    .replace(/[   ]/g, ' ')
+    .replace(/[\xA0\u202F\u2007]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
 }

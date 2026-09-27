@@ -11,8 +11,9 @@ function slide(extra: Partial<SlideInfo> = {}): SlideInfo {
 }
 
 const names = resolveConfig()
-const run = (timer: Parameters<typeof act>[0], action: Parameters<typeof act>[1], s: SlideInfo | null, now: number) =>
-  act(timer, action, s, now, names)
+function run(timer: Parameters<typeof act>[0], action: Parameters<typeof act>[1], s: SlideInfo | null, now: number) {
+  return act(timer, action, s, now, names)
+}
 
 test('starts the slide\'s activity, only when asked', () => {
   const t = run(null, 'toggle', slide(), 0)!

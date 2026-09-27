@@ -5,6 +5,7 @@
 import type { RenderState } from './render.ts'
 import type { Timer } from './timer.ts'
 import type { Schedule, SlideInfo } from './types.ts'
+import { Buffer } from 'node:buffer'
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'

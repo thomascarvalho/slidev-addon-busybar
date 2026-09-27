@@ -1,10 +1,18 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { label, pixels, rect, textWidth, digits, digitsWidth } from './draw.ts'
+import { digits, digitsWidth, label, pixels, rect, textWidth } from './draw.ts'
 
 test('rect is a solid rectangle in the bar\'s colour format', () => {
   assert.deepEqual(rect('r', 1, 2, 3, 4, '#f00'), {
-    id: 'r', type: 'rectangle', x: 1, y: 2, width: 3, height: 4, fill: 'solid', fill_colors: ['#FF0000FF'], border_width: 0,
+    id: 'r',
+    type: 'rectangle',
+    x: 1,
+    y: 2,
+    width: 3,
+    height: 4,
+    fill: 'solid',
+    fill_colors: ['#FF0000FF'],
+    border_width: 0,
   })
 })
 

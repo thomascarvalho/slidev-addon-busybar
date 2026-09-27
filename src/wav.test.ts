@@ -10,19 +10,23 @@ function wav({ encoding = 1, channels = 1, rate = BAR_RATE, bits = 16, samples =
   const dv = new DataView(data.buffer)
   samples.forEach((s, i) => {
     const at = i * width
-    if (encoding === 3)
+    if (encoding === 3) {
       bits === 32 ? dv.setFloat32(at, s, true) : dv.setFloat64(at, s, true)
-    else if (bits === 8)
+    }
+    else if (bits === 8) {
       dv.setUint8(at, s)
-    else if (bits === 16)
+    }
+    else if (bits === 16) {
       dv.setInt16(at, s, true)
+    }
     else if (bits === 24) {
       dv.setUint8(at, s & 0xFF)
       dv.setUint8(at + 1, (s >> 8) & 0xFF)
       dv.setInt8(at + 2, s >> 16)
     }
-    else
+    else {
       dv.setInt32(at, s, true)
+    }
   })
   const fmtSize = extensible ? 40 : 16
   const fmt = new Uint8Array(8 + fmtSize)
@@ -95,7 +99,7 @@ test('what cannot be played says why', () => {
 })
 
 test('a sound longer than 10 s is cut at 10 s', () => {
-  const { pcm, truncated } = decodeWav(wav({ rate: 8000, samples: Array.from({ length: 8000 * 12 }, () => 0) }))
+  const { pcm, truncated } = decodeWav(wav({ rate: 8000, samples: Array.from<number>({ length: 8000 * 12 }).fill(0) }))
   assert.equal(pcm.length, BAR_RATE * 10)
   assert.equal(truncated, true)
 })
@@ -106,7 +110,7 @@ test('the mono mix is capped near the truncation boundary, not before it', () =>
      still be mixed in and reach the last output sample through resampling:
      capping the mix too early would silently drop it. */
   const rate = 40_000
-  const samples = Array.from({ length: 500_000 }, () => 0)
+  const samples = Array.from<number>({ length: 500_000 }).fill(0)
   samples[400_000] = 32_767
   const { pcm, truncated } = decodeWav(wav({ rate, samples }))
   assert.equal(pcm.length, BAR_RATE * 10)

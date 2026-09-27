@@ -5,8 +5,8 @@
    again under the same id, and the relay clears the ones that go away. */
 import type { DeviceFont } from '@busy-app/busy-lib'
 import type { ResolvedConfig, ScreenStyle } from './config.ts'
-import type { Timer } from './timer.ts'
 import type { Day } from './schedule.ts'
+import type { Timer } from './timer.ts'
 import type { Element, Schedule, SlideInfo } from './types.ts'
 import { resolveConfig } from './config.ts'
 import { SCREEN, textWidth } from './draw.ts'

@@ -1,3 +1,4 @@
+import type { Buffer } from 'node:buffer'
 import type { SoundBar } from './sound-store.ts'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
@@ -7,10 +8,20 @@ import { createSoundStore } from './sound-store.ts'
 function wav(samples: number[]): Uint8Array {
   const out = new Uint8Array(44 + samples.length * 2)
   const v = new DataView(out.buffer)
-  out.set([0x52, 0x49, 0x46, 0x46]); v.setUint32(4, 36 + samples.length * 2, true); out.set([0x57, 0x41, 0x56, 0x45], 8)
-  out.set([0x66, 0x6D, 0x74, 0x20], 12); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true)
-  v.setUint32(24, 44100, true); v.setUint32(28, 88200, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true)
-  out.set([0x64, 0x61, 0x74, 0x61], 36); v.setUint32(40, samples.length * 2, true)
+  /* RIFF, WAVE, fmt (PCM, mono, 44.1 kHz, 16-bit), data. */
+  out.set([0x52, 0x49, 0x46, 0x46])
+  v.setUint32(4, 36 + samples.length * 2, true)
+  out.set([0x57, 0x41, 0x56, 0x45], 8)
+  out.set([0x66, 0x6D, 0x74, 0x20], 12)
+  v.setUint32(16, 16, true)
+  v.setUint16(20, 1, true)
+  v.setUint16(22, 1, true)
+  v.setUint32(24, 44100, true)
+  v.setUint32(28, 88200, true)
+  v.setUint16(32, 2, true)
+  v.setUint16(34, 16, true)
+  out.set([0x64, 0x61, 0x74, 0x61], 36)
+  v.setUint32(40, samples.length * 2, true)
   samples.forEach((s, i) => v.setInt16(44 + i * 2, s, true))
   return out
 }

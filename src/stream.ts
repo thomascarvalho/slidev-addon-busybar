@@ -1,3 +1,4 @@
+import type { BarInput } from './input.ts'
 /* Listens to the bar's state stream (`/api/status/ws`) for its buttons, wheel
    and switch. busy-lib's `LocalStateStream` runs in a browser Web Worker, so
    the dev server opens the socket itself.
@@ -7,7 +8,6 @@
    1.2.4 the stream sometimes goes silent without closing, so silence is
    treated as a disconnection. */
 import type { Log } from './relay.ts'
-import type { BarInput } from './input.ts'
 import { decodeInputs } from './input.ts'
 
 const SILENCE_MS = 5000
@@ -74,7 +74,7 @@ export function listenToBar(log: Log, options: StreamOptions) {
 
   function watch() {
     clearTimeout(watchdog)
-    watchdog = setTimeout(() => drop(socket, alive ? 'silent' : 'no answer'), SILENCE_MS)
+    watchdog = setTimeout(drop, SILENCE_MS, socket, alive ? 'silent' : 'no answer')
   }
 
   /** Gives up on `ws` and reconnects, once per socket. */

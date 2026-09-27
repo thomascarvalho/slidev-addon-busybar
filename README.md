@@ -488,6 +488,7 @@ socket to one window, where `setup/shortcuts.ts` calls Slidev's navigation.
 ```bash
 npm install
 npm test          # renderer, relay and timer, no bar needed (Node ≥ 23.6)
+npm run lint      # ESLint, antfu config; `npm run lint:fix` tidies what it can
 npm run dev       # builds, then opens example/slides.md
 npm run preview -- /tmp/screens   # draws every state on a real bar and saves screenshots
 ```

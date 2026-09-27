@@ -12,10 +12,10 @@ export type Button = typeof Button[keyof typeof Button]
 export const SwitchPosition = { BUSY: 0, CUSTOM: 1, OFF: 2, APPS: 3, SETTINGS: 4 } as const
 export type SwitchPosition = typeof SwitchPosition[keyof typeof SwitchPosition]
 
-export type BarInput =
-  | { kind: 'button', button: Button, pressed: boolean }
-  | { kind: 'wheel', delta: number }
-  | { kind: 'switch', position: SwitchPosition }
+export type BarInput
+  = | { kind: 'button', button: Button, pressed: boolean }
+    | { kind: 'wheel', delta: number }
+    | { kind: 'switch', position: SwitchPosition }
 
 const WIRE_VARINT = 0
 const WIRE_FIXED64 = 1
@@ -47,9 +47,15 @@ function fields(bytes: Uint8Array): Field[] {
     const key = varint()
     const no = key >>> 3
     switch (key & 7) {
-      case WIRE_VARINT: out.push({ no, value: varint() }); break
-      case WIRE_FIXED64: i += 8; break
-      case WIRE_FIXED32: i += 4; break
+      case WIRE_VARINT:
+        out.push({ no, value: varint() })
+        break
+      case WIRE_FIXED64:
+        i += 8
+        break
+      case WIRE_FIXED32:
+        i += 4
+        break
       case WIRE_BYTES: {
         const length = varint()
         if (i + length > bytes.length)

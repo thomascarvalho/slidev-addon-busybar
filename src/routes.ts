@@ -98,7 +98,7 @@ export function parseSchedule(body: Record<string, unknown>): Schedule | null {
   if (start === undefined || end === undefined || !Array.isArray(body.steps))
     return null
   const steps = body.steps.slice(0, MAX_STEPS).map(parseStep)
-  if (steps.some(s => s === null))
+  if (steps.includes(null))
     return null
   const warnings = strs(body.warnings, MAX_WARNINGS) ?? []
   return { start, end, steps: steps as Step[], warnings }
@@ -114,9 +114,11 @@ export interface Actions {
     `null` when the body is not what the route expects. */
 type Route = (body: Record<string, unknown>) => (() => void) | null
 
-const route = <T>(parse: (body: Record<string, unknown>) => T | null, act: (value: T) => void): Route => (body) => {
-  const value = parse(body)
-  return value === null ? null : () => act(value)
+function route<T>(parse: (body: Record<string, unknown>) => T | null, act: (value: T) => void): Route {
+  return (body) => {
+    const value = parse(body)
+    return value === null ? null : () => act(value)
+  }
 }
 
 export function createRoutes(actions: Actions) {

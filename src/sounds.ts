@@ -28,7 +28,7 @@ export function parseSound(value: unknown): Sound | undefined {
 }
 
 /* Formats a trainer is likely to have, that `ffmpeg` converts in one step. */
-const CONVERTIBLE = /\.(mp3|ogg|m4a|aac|flac|aiff)$/i
+const CONVERTIBLE = /\.(?:mp3|ogg|m4a|aac|flac|aiff)$/i
 
 /** What to tell the console about an invalid `busy.sound`: the deck's own
     sound plays instead, with a conversion hint for a known audio format. */

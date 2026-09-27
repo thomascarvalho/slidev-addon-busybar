@@ -1,6 +1,7 @@
 /** `90s`, `15m`, `1h30m`, `1h 30m 15s` → milliseconds; `null` if unreadable. */
 export function parseDuration(value: string): number | null {
-  const match = /^\s*(?:(\d+)\s*h)?\s*(?:(\d+)\s*m(?:in)?)?\s*(?:(\d+)\s*s)?\s*$/i.exec(value)
+  // eslint-disable-next-line regexp/no-super-linear-backtracking -- a frontmatter value, a few characters long
+  const match = /^\s*(?:(\d+)\s*h\s*)?(?:(\d+)\s*m(?:in)?)?\s*(?:(\d+)\s*s\s*)?$/i.exec(value)
   if (!match || !(match[1] || match[2] || match[3]))
     return null
   const [, h = '0', m = '0', s = '0'] = match

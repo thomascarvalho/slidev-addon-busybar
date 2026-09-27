@@ -6,8 +6,8 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { resolveConfig } from './config.ts'
 import { rect } from './draw.ts'
-import { EMPTY_DAY, enter } from './schedule.ts'
 import { render as renderScene } from './render.ts'
+import { EMPTY_DAY, enter } from './schedule.ts'
 
 const MIN = 60_000
 
@@ -227,8 +227,9 @@ test('a logo screen with a running timer renders the timer instead', () => {
 })
 
 const PHASES = [{ label: 'Reading', ms: 5 * MIN }, { label: 'Coding', ms: 10 * MIN }, { label: null, ms: 5 * MIN }]
-const lab = (index: number, endsAt: number | null, extra: Partial<Timer> = {}): Timer =>
-  ({ ...running(0), label: 'Lab', phases: PHASES, index, totalMs: PHASES[index].ms, endsAt, ...extra })
+function lab(index: number, endsAt: number | null, extra: Partial<Timer> = {}): Timer {
+  return { ...running(0), label: 'Lab', phases: PHASES, index, totalMs: PHASES[index].ms, endsAt, ...extra }
+}
 
 test('a running phase shows its name and one segment per phase', () => {
   const scene = render({ slide: null, timer: lab(1, 5 * MIN) }, 0)

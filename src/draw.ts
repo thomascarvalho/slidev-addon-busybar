@@ -66,7 +66,7 @@ export function digitsWidth(text: string, scale: number): number {
     per dot, its top-left (or top-right with `align: 'right'`) at (x, y). */
 export function digits(id: string, text: string, color: string, x: number, y: number, scale = 3, align: 'left' | 'right' = 'left'): Element {
   const rows = Array.from({ length: 5 }, (_, r) => [...text].map(c => (GLYPHS[c] ?? GLYPHS[' '])[r]).join('.'))
-  const grid = rows.flatMap(row => Array.from({ length: scale }, () => [...row].flatMap(c => Array.from({ length: scale }, () => c)).join('')))
+  const grid = rows.flatMap(row => Array.from({ length: scale }, () => [...row].flatMap(c => Array.from({ length: scale }).fill(c)).join('')))
   const left = align === 'right' ? x - digitsWidth(text, scale) : x
   return pixels(id, grid, { '#': color }, left, y)
 }
