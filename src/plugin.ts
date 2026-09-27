@@ -2,12 +2,11 @@
    `slidev build`. It reads `.env.local` (settings.ts) and hands the server
    to `startBusybar` (server.ts), which assembles everything. */
 import type { Plugin } from 'vite'
-import type { Settings } from './settings.ts'
+import type { Settings } from './config.ts'
 import process from 'node:process'
 import { loadEnv } from 'vite'
-import { createLog } from './log.ts'
+import { createLog, readSettings } from './config.ts'
 import { startBusybar } from './server.ts'
-import { readSettings } from './settings.ts'
 
 export function busybar(): Plugin {
   let context: { root: string, mode: string, settings: Settings } | null = null

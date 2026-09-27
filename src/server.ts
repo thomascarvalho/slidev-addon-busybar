@@ -4,16 +4,14 @@
    the sounds and the day store; the controls need the relay; a reloaded
    config reaches the relay, the controls and the sounds. */
 import type { ViteDevServer } from 'vite'
-import type { Log } from './log.ts'
-import type { Settings } from './settings.ts'
+import type { Log, Settings } from './config.ts'
 import { resolve } from 'node:path'
 import { BusyBar } from '@busy-app/busy-lib'
 import { wireBarControls } from './bar-controls.ts'
 import { createDayStore, DAY_FILE } from './day-store.ts'
-import { createDeckSounds } from './deck-sounds.ts'
 import { createRelay, TIMEOUT_MS } from './relay.ts'
 import { createRoutes } from './routes.ts'
-import { createSoundStore } from './sound-store.ts'
+import { createDeckSounds, createSoundStore } from './sound-store.ts'
 import { createUserConfig } from './user-config.ts'
 
 export interface ServerContext {

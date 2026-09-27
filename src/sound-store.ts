@@ -3,12 +3,14 @@
    delay drawing; a problem is one warning, and the moment's default sound
    plays instead: the trainer never loses the signal silently. */
 import type { AssetsDeleteParams, AssetsUploadParams, AudioPlayParams, RequestOptions, StorageList, StorageReadDirectoryParams, SuccessResponse } from '@busy-app/busy-lib'
-import type { Log } from './relay.ts'
+import type { ViteDevServer } from 'vite'
+import type { Log, ResolvedConfig } from './config.ts'
 import type { Sound, SoundPlayer } from './sounds.ts'
 import { Buffer } from 'node:buffer'
 import { createHash } from 'node:crypto'
 import { readFile as fsReadFile } from 'node:fs/promises'
-import { APPLICATION, deckFile, stockPlayer } from './sounds.ts'
+import { relative, resolve } from 'node:path'
+import { APPLICATION, deckFile, invalidSoundMessage, parseSound, stockPlayer, STOCK_SOUNDS } from './sounds.ts'
 import { decodeWav, MAX_SECONDS } from './wav.ts'
 
 const UPLOAD_TIMEOUT_MS = 10_000
@@ -157,4 +159,51 @@ export function createSoundStore(bar: SoundBar, log: Log, options: SoundStoreOpt
     /** Resolves when every queued job is done (tests). */
     idle: () => queue,
   }
+}
+
+/* The deck's own sounds, kept ready on the bar: the WAV files named in
+   `busybar.config.ts` (watched, uploaded again when edited or created) and
+   the one a slide names in `busy.sound` (uploaded when the slide is shown,
+   long before its timer can end). Invalid values warn once and never block
+   anything: the deck's sound plays instead. */
+type SoundStore = ReturnType<typeof createSoundStore>
+
+export function createDeckSounds(server: ViteDevServer, sounds: SoundStore, root: string) {
+  const watched = new Set<string>()
+
+  /** Uploads the configuration's files and watches them; checks its stock
+      names. */
+  function prepare(config: ResolvedConfig) {
+    for (const sound of Object.values(config.sounds)) {
+      sounds.prepare(sound)
+      const full = sound && 'file' in sound ? deckFile(root, sound.file) : null
+      if (full && !watched.has(full)) {
+        watched.add(full)
+        server.watcher.add(full)
+      }
+    }
+    void sounds.checkStock(Object.entries(config.sounds).map(([key, sound]): [string, Sound] => [`sounds.${key}`, sound]))
+  }
+
+  /** A slide's `busy.sound`, as posted by the browser. */
+  function slideSound(value: string) {
+    const own = parseSound(value)
+    if (own === undefined)
+      sounds.warnOnce(invalidSoundMessage(value))
+    else if (own && 'stock' in own && !STOCK_SOUNDS.includes(own.stock))
+      sounds.warnOnce(`busy.sound: no stock sound "${own.stock}" (${STOCK_SOUNDS.join(', ')}).`)
+    else if (own)
+      sounds.prepare(own)
+  }
+
+  /* `add` too: a deck WAV created after the "not found" warning is picked up
+     without restarting the server. */
+  function onFile(file: string) {
+    if (watched.has(resolve(file)))
+      sounds.prepare({ file: relative(root, resolve(file)) })
+  }
+  server.watcher.on('change', onFile)
+  server.watcher.on('add', onFile)
+
+  return { prepare, slideSound }
 }

@@ -5,8 +5,7 @@
    The talk must never depend on the bar: every call has a short timeout, only
    one paint is in flight at a time (the latest scene replaces pending ones),
    and a missing bar shows up as one log line, not as an error. */
-import type { ResolvedConfig, SoundMoment } from './config.ts'
-import type { Log } from './log.ts'
+import type { Log, ResolvedConfig, SoundMoment } from './config.ts'
 import type { DayStore, DayTrackerOptions } from './day.ts'
 import type { Bar } from './painter.ts'
 import type { RenderState, Scene } from './render.ts'
@@ -33,7 +32,7 @@ export const FIRST_SETTING_MS = 5 * 60_000
 export const MIN_SETTING_MS = 60_000
 export const MAX_SETTING_MS = 120 * 60_000
 
-export type { Log } from './log.ts'
+export type { Log } from './config.ts'
 
 export interface RelayOptions {
   now?: () => number

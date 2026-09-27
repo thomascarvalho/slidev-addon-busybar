@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { DEFAULT_CONTROLS, resolveConfig } from './config.ts'
-import { buttonAction, route, settingAction, wheelAction } from './controls.ts'
+import { buttonAction, route, settingAction, wheelAction } from './bar-controls.ts'
 import { Button } from './input.ts'
 
 test('by default, Start/Stop runs the timer, Back held cancels it, OK does nothing', () => {
