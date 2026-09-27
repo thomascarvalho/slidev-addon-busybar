@@ -1,7 +1,7 @@
 /* The day (`Day` of schedule.ts) saved next to the deck, so that a restart
    of the dev server in the middle of a training keeps the start and the
    entries. Only today's file is loaded. */
-import type { DayStore } from './relay.ts'
+import type { DayStore } from './day.ts'
 import type { Day } from './schedule.ts'
 import { readFileSync } from 'node:fs'
 import { writeFile } from 'node:fs/promises'
