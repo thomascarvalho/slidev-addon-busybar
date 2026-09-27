@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { parseSchedule, parseSlide } from './plugin.ts'
+import { parseSchedule, parseSlide } from './requests.ts'
 
 test('a slide from the browser: phases as a list, capped', () => {
   assert.deepEqual(parseSlide({ no: 1, timer: '15m' })!.timer, ['15m'])
