@@ -15,8 +15,8 @@ import type { Timer } from './timer.ts'
 import type { Element, Schedule, Step } from './types.ts'
 import { digits, digitsWidth, textWidth } from './draw.ts'
 import { formatClock, formatTime } from './duration.ts'
+import { fit, line as lined, segments as segmented } from './elements.ts'
 import { clockMs, minutesOfDay, status } from './schedule.ts'
-import { toDeviceText } from './text.ts'
 import { phaseName, remaining, status as timerStatus } from './timer.ts'
 
 export const BACK = { width: 160, height: 80 } as const
@@ -37,7 +37,6 @@ const RULE_1 = 26
 const RULE_2 = 53
 const GAP = 6
 const BLINK_MS = 500
-const SCROLL = { scroll_rate: 900, scroll_start_delay: 1500, scroll_repeat_delay: 2000 }
 /* The font with accents (the step names), as on the front. */
 const TEXT: DeviceFont = 'global'
 /* Home-made digits: the clock 20 px high, the delay and countdowns 15 px. */
@@ -49,12 +48,10 @@ function back<T extends Element>(element: T): T {
 }
 
 /** Text anchored at (x, y) if it fits in `width`, scrolling within its
-    room otherwise. */
+    room otherwise; `x` is the right edge when right-aligned. */
 function text(id: string, value: string, font: DeviceFont, color: string, x: number, y: number, width: number, align: 'top_left' | 'top_right'): Element {
-  const content = toDeviceText(value)
-  if (textWidth(content, font) <= width)
-    return back({ id, type: 'text', text: content, font, color, x, y, align })
-  return back({ id, type: 'text', text: content, font, color, x: align === 'top_right' ? x - width : x, y, align: 'top_left', width, ...SCROLL })
+  const right = align === 'top_right'
+  return back(fit(id, value, font, color, { x: right ? x - width : x, y, width }, right ? 'right' : 'left'))
 }
 
 /** Big digits, their top-left (or top-right) at (x, y). */
@@ -66,30 +63,18 @@ function rect(id: string, x: number, y: number, width: number, height: number, c
   return back({ id, type: 'rectangle', x, y, width, height, fill: 'solid', fill_colors: [color], border_width: 0, z_index })
 }
 
-/** A 2-px line across the band, filled to `ratio`. */
+/* A band's 2-px progress line, two dark pixels between two segments. */
+const band = (y: number) => ({ x: MARGIN, y, width: INNER, height: 2, track: DARK, gap: 2 })
+
+/** A line across the band, filled to `ratio`. */
 function line(prefix: string, y: number, ratio: number, color: string): Element[] {
-  const width = Math.round(Math.min(1, Math.max(0, ratio)) * INNER)
-  const elements = [rect(`${prefix}-track`, MARGIN, y, INNER, 2, DARK, 0)]
-  if (width > 0)
-    elements.push(rect(`${prefix}-fill`, MARGIN, y, width, 2, color, 1))
-  return elements
+  return lined(prefix, band(y), ratio, color).map(back)
 }
 
-/** One segment per phase, 2 px apart: done ones full, the current one to
-    `ratio`, the rest as the track. */
+/** One segment per phase: done ones full, the current one to `ratio`, the
+    rest as the track. */
 function segments(prefix: string, y: number, count: number, done: number, current: { ratio: number, color: string } | null): Element[] {
-  const width = Math.floor((INNER - 2 * (count - 1)) / count)
-  const elements = [rect(`${prefix}-track`, MARGIN, y, INNER, 2, DARK, 0)]
-  for (let i = 0; i < count; i++) {
-    const x = MARGIN + i * (width + 2)
-    const full = i === count - 1 ? MARGIN + INNER - x : width
-    if (i > 0)
-      elements.push(rect(`${prefix}-gap${i}`, x - 2, y, 2, 2, '#000000FF', 2))
-    const filled = i < done ? full : i === done && current ? Math.round(Math.min(1, Math.max(0, current.ratio)) * full) : 0
-    if (filled > 0)
-      elements.push(rect(`${prefix}-seg${i}`, x, y, filled, 2, i < done ? WHITE : current!.color, 1))
-  }
-  return elements
+  return segmented(prefix, band(y), count, done, current && { ratio: current.ratio, fill: current.color }, WHITE).map(back)
 }
 
 /** A chapter's title, or a screen's `text`, its configured title, or its name. */

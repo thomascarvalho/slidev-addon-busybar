@@ -11,6 +11,7 @@ import type { Element, Schedule, SlideInfo } from './types.ts'
 import { resolveConfig } from './config.ts'
 import { SCREEN, textWidth } from './draw.ts'
 import { formatClock, formatTime } from './duration.ts'
+import { fit, line, segments as segmented } from './elements.ts'
 import { minutesOfDay, resumeTime } from './schedule.ts'
 import { toDeviceText } from './text.ts'
 import { armed, phaseName, remaining, status, WARN_MS } from './timer.ts'
@@ -44,8 +45,6 @@ const TRACK = '#2A1C1AFF'
 const image = (name: string) => `shared/images/${name}.image`
 const ICON_SIZE = 16
 
-/* The bar's native scrolling, in pixels per minute. */
-const SCROLL = { scroll_rate: 900, scroll_start_delay: 1500, scroll_repeat_delay: 2000 }
 const BLINK_MS = 500
 /* The status LED reminds a trainer who missed the end of a phase. */
 const WAIT_LED_MS = 30_000
@@ -63,56 +62,28 @@ const GAP = 4
 
 /** Text within [x, x + width]: centred if it fits, scrolling otherwise. */
 function text(id: string, value: string, color: string, x = 0, width: number = SCREEN.width): Element {
-  const content = toDeviceText(value)
-  if (textWidth(content, FONT) <= width)
-    return { id, type: 'text', text: content, font: FONT, color, x: x + Math.floor(width / 2), y: TEXT_Y, align: 'top_mid' }
-  return { id, type: 'text', text: content, font: FONT, color, x, y: TEXT_Y, align: 'top_left', width, ...SCROLL }
+  return fit(id, value, FONT, color, { x, y: TEXT_Y, width }, 'mid')
 }
 
 function icon(name: string, x = 0, y = 0, opacity = 100): Element {
   return { id: 'icon', type: 'image', stock_path: image(name), x, y, opacity }
 }
 
-/** A bar on the last row of pixels, filled to `ratio` (0 to 1), solid or as
-    a horizontal gradient from `color[0]` to `color[1]`.
+/* The last row of pixels: progress bars and phase segments, a dark pixel
+   between two segments. */
+const LAST_ROW = { x: 0, y: SCREEN.height - 1, width: SCREEN.width, height: 1, track: TRACK, gap: 1 }
 
-    The track's explicit `z_index: 0` matters: without it, firmware 1.2.4
-    draws the track over the fill whenever a text element comes first. */
+/** A bar on the last row, filled to `ratio` (0 to 1), solid or as a
+    horizontal gradient from `color[0]` to `color[1]`. */
 function bar(ratio: number, color: string | [string, string]): Element[] {
-  const width = Math.round(Math.min(1, Math.max(0, ratio)) * SCREEN.width)
-  const row = { type: 'rectangle', x: 0, y: SCREEN.height - 1, height: 1, border_width: 0 } as const
-  const elements: Element[] = [{ ...row, id: 'track', width: SCREEN.width, fill: 'solid', fill_colors: [TRACK], z_index: 0 }]
-  if (width > 0) {
-    const fill = typeof color === 'string'
-      ? { fill: 'solid' as const, fill_colors: [color] }
-      : { fill: 'gradient_h' as const, fill_colors: [...color] }
-    elements.push({ ...row, ...fill, id: 'fill', width, z_index: 1 })
-  }
-  return elements
+  return line('', LAST_ROW, ratio, color)
 }
 
-/** One segment per phase on the last row, separated by a dark pixel:
-    `done` phases full, the current one (if any) filled to `ratio` in
-    `color`, the others left as the track. */
+/** One segment per phase on the last row: `done` phases full in green, the
+    current one (if any) filled to `ratio` in `color`, the others left as the
+    track. */
 function segments(count: number, done: number, current: { ratio: number, color: string | [string, string] } | null): Element[] {
-  const row = { type: 'rectangle', y: SCREEN.height - 1, height: 1, border_width: 0 } as const
-  const width = Math.floor((SCREEN.width - (count - 1)) / count)
-  const elements: Element[] = [{ ...row, id: 'track', x: 0, width: SCREEN.width, fill: 'solid', fill_colors: [TRACK], z_index: 0 }]
-  for (let i = 0; i < count; i++) {
-    const x = i * (width + 1)
-    const full = i === count - 1 ? SCREEN.width - x : width
-    if (i > 0)
-      elements.push({ ...row, id: `gap${i}`, x: x - 1, width: 1, fill: 'solid', fill_colors: ['#000000FF'], z_index: 2 })
-    const filled = i < done ? full : i === done && current ? Math.round(Math.min(1, Math.max(0, current.ratio)) * full) : 0
-    if (filled > 0) {
-      const color = i < done ? GREEN : current!.color
-      const fill = typeof color === 'string'
-        ? { fill: 'solid' as const, fill_colors: [color] }
-        : { fill: 'gradient_h' as const, fill_colors: [...color] }
-      elements.push({ ...row, ...fill, id: `seg${i}`, x, width: filled, z_index: 1 })
-    }
-  }
-  return elements
+  return segmented('', LAST_ROW, count, done, current && { ratio: current.ratio, fill: current.color }, GREEN)
 }
 
 /** Room left for a label next to a value, `left` pixels reserved. */
