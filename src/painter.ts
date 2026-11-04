@@ -2,7 +2,7 @@
    sends only the difference. It knows nothing of slides, timers or the day:
    the relay decides what to draw, the painter how to send it.
 
-   Firmware facts it works around: a `DisplayDraw` adds to the application's
+   Firmware facts it works around: a `displayDraw` adds to the application's
    elements, drawing again under the same id merges fields (a rectangle keeps
    its gradient when redrawn solid), and clearing an id that is not on screen
    is a 400. */
@@ -19,9 +19,9 @@ export const TIMEOUT_MS = 1500
 
 /** What the addon needs from a `BusyBar` client. */
 export interface Bar {
-  DisplayDraw: (params: DisplayDrawParams, options?: RequestOptions) => Promise<SuccessResponse>
-  DisplayClear: (params?: DisplayClearParams, options?: RequestOptions) => Promise<SuccessResponse>
-  AudioPlay: (params: AudioPlayParams, options?: RequestOptions) => Promise<SuccessResponse>
+  displayDraw: (params: DisplayDrawParams, options?: RequestOptions) => Promise<SuccessResponse>
+  displayClear: (params?: DisplayClearParams, options?: RequestOptions) => Promise<SuccessResponse>
+  audioPlay: (params: AudioPlayParams, options?: RequestOptions) => Promise<SuccessResponse>
 }
 
 export interface PainterOptions {
@@ -75,12 +75,12 @@ export function createPainter(bar: Bar, options: PainterOptions = {}): Painter {
     options.debug?.(`${shown ? `clear [${removed}]` : 'clear all'}, draw [${changed.map(e => e.id)}]${led ? `, LED ${led}` : ''}`)
     const request = { timeout: TIMEOUT_MS }
     if (!shown)
-      await bar.DisplayClear({ application_name: APPLICATION }, request)
+      await bar.displayClear({ application_name: APPLICATION }, request)
     else if (removed.length)
-      await bar.DisplayClear({ application_name: APPLICATION, element_ids: removed }, request)
+      await bar.displayClear({ application_name: APPLICATION, element_ids: removed }, request)
     touched = true
     if (changed.length) {
-      await bar.DisplayDraw({
+      await bar.displayDraw({
         application_name: APPLICATION,
         priority: PRIORITY,
         elements: changed,
@@ -98,7 +98,7 @@ export function createPainter(bar: Bar, options: PainterOptions = {}): Painter {
   /** Clears our elements, without insisting: on exit. */
   async function clear() {
     if (touched)
-      await bar.DisplayClear({ application_name: APPLICATION }, { timeout: TIMEOUT_MS }).catch(() => {})
+      await bar.displayClear({ application_name: APPLICATION }, { timeout: TIMEOUT_MS }).catch(() => {})
   }
 
   return { paint, forget, clear }

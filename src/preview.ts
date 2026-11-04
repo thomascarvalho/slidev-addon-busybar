@@ -101,10 +101,10 @@ function png(px: Uint8Array, file: string, W = 72, H = 16, S = 10) {
 }
 
 for (const [name, state] of Object.entries(states)) {
-  await bar.DisplayClear({ application_name: APPLICATION })
-  await bar.DisplayDraw({ application_name: APPLICATION, priority: 70, elements: render(state, at(name), config).elements })
+  await bar.displayClear({ application_name: APPLICATION })
+  await bar.displayDraw({ application_name: APPLICATION, priority: 70, elements: render(state, at(name), config).elements })
   await new Promise(resolve => setTimeout(resolve, 500))
-  const px = await bar.DisplayScreenFrameGet({ display: 0 }, { dataType: 'binary', format: 'rgba' })
+  const px = await bar.displayScreenFrameGet({ display: 0 }, { dataType: 'binary', format: 'rgba' })
   png(px!, path.join(out, `${name}.png`))
   console.log(name)
 }
@@ -138,11 +138,11 @@ const backs: Record<string, { state: RenderState, at: number }> = {
   'back-end': { state: { ...base, slide: null, timer: null, schedule: deck, day: enter(deck, EMPTY_DAY, 3, day(12, 30)) }, at: day(12, 40) },
 }
 for (const [name, { state, at }] of Object.entries(backs)) {
-  await bar.DisplayClear({ application_name: APPLICATION })
-  await bar.DisplayDraw({ application_name: APPLICATION, priority: 70, elements: renderBack(state, at, config).elements })
+  await bar.displayClear({ application_name: APPLICATION })
+  await bar.displayDraw({ application_name: APPLICATION, priority: 70, elements: renderBack(state, at, config).elements })
   await new Promise(resolve => setTimeout(resolve, 500))
-  const px = await bar.DisplayScreenFrameGet({ display: 1 }, { dataType: 'binary', format: 'rgba' })
+  const px = await bar.displayScreenFrameGet({ display: 1 }, { dataType: 'binary', format: 'rgba' })
   png(px!, path.join(out, `${name}.png`), 160, 80, 4)
   console.log(name)
 }
-await bar.DisplayClear({ application_name: APPLICATION })
+await bar.displayClear({ application_name: APPLICATION })

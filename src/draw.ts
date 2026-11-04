@@ -1,4 +1,4 @@
-/* Small helpers to build `DisplayDraw` elements, used by the renderer and
+/* Small helpers to build `displayDraw` elements, used by the renderer and
    exported for custom logos in `busybar.config.ts`. */
 import type { DeviceFont } from '@busy-app/busy-lib'
 import type { Element } from './types.ts'

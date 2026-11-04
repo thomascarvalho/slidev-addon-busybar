@@ -1,6 +1,6 @@
 import type { DisplayDrawParams } from '@busy-app/busy-lib'
 
-/** One element of a BUSY Bar `DisplayDraw` call. */
+/** One element of a BUSY Bar `displayDraw` call. */
 export type Element = DisplayDrawParams['elements'][number]
 
 /* What the slides send to the relay on every slide change. Chapter and

@@ -8,15 +8,15 @@ import { createPainter } from './painter.ts'
 function fakeBar() {
   const calls: string[] = []
   const bar: Bar = {
-    async DisplayDraw(params) {
+    async displayDraw(params) {
       calls.push(`draw ${params.elements.map(e => e.id).join(',')}${params.led_notification_color ? ` led ${params.led_notification_color}` : ''}`)
       return { result: 'OK' }
     },
-    async DisplayClear(params) {
+    async displayClear(params) {
       calls.push(params?.element_ids ? `clear ${params.element_ids.join(',')}` : 'clear all')
       return { result: 'OK' }
     },
-    async AudioPlay() {
+    async audioPlay() {
       return { result: 'OK' }
     },
   }

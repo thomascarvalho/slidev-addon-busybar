@@ -22,7 +22,7 @@ function fakeBar() {
   const played: string[] = []
   const state = { fail: null as null | { status?: number, name?: string, message: string }, sounds: 0 }
   const bar: Bar = {
-    async DisplayDraw(params) {
+    async displayDraw(params) {
       if (state.fail)
         throw state.fail
       /* `calls` lists the front's ids: the back's come with every draw and
@@ -34,13 +34,13 @@ function fakeBar() {
       leds.push(params.led_notification_color)
       return { result: 'OK' }
     },
-    async DisplayClear(params) {
+    async displayClear(params) {
       if (state.fail)
         throw state.fail
       calls.push(params?.element_ids ? `clear ${params.element_ids.join(',')}` : 'clear all')
       return { result: 'OK' }
     },
-    async AudioPlay(params) {
+    async audioPlay(params) {
       state.sounds++
       played.push('stock_path' in params ? params.stock_path : params.path)
       return { result: 'OK' }
