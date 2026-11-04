@@ -57,9 +57,9 @@ addons:
 
 1. **Set the switch on the bar to APPS.** In the other positions the bar
    refuses to draw anything from outside (a 409 error in the console). On
-   APPS, a bar on firmware 1.3 runs one of its JS apps (Clock by default):
-   the addon quits it when it first draws, and the bar launches it again when
-   the switch leaves APPS and comes back.
+   APPS, a bar on firmware 1.3 can run one of its JS apps (Clock, Weather…):
+   the addon quits it when it first draws. The bar then shows its Apps menu
+   on APPS, and the app only comes back when you pick it there.
 2. **Connect it**, either:
    - over **USB**: nothing to configure, it answers on `10.0.4.20`;
    - over **Wi-Fi**: you need its IP address (shown in the BUSY app) and its
@@ -443,8 +443,9 @@ in the official docs:
   1.5 s for the priority to drop before its 409. On APPS, firmware 1.3 runs
   a JS app (Clock, Weather, yours) that draws at 50 and comes back as soon as
   the screen is cleared: the addon draws at 60 and quits the app first
-  (`appsQuit`, a 409 when none runs). The bar launches the last app again
-  when the switch leaves APPS and returns.
+  (`appsQuit`, a 409 `application is not running` when none runs). Once
+  quit, the app stays quit: APPS shows the Apps menu, even after the switch
+  leaves and returns, until someone picks the app on the bar.
 
 - Only the `global` font has accented letters; the others show boxes. Its
   capitals are drawn without their accent.

@@ -13,9 +13,9 @@ Firmware 1.3 and busy-lib 1.0. A bar on firmware 1.2 keeps working.
   by default) that draws at priority 50 and comes back whenever the screen
   is cleared. The relay quits it before its first draw, and again when a
   draw is refused because an app was launched meanwhile: one quit, one
-  retry, a line in the console. A bar below API 27.14 is never asked. The
-  bar launches the app again when the switch leaves APPS and returns, so
-  nothing is restored on exit.
+  retry, a line in the console. A bar below API 27.14 is never asked.
+  Nothing is restored on exit: APPS shows the bar's Apps menu until someone
+  picks an app there.
 - `superscript` is accepted by `label()`, for custom logos.
 
 ### Changed
