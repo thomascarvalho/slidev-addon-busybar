@@ -9,7 +9,7 @@ export function messageOf(error: unknown): string {
 export function describeBarError(error: unknown): string {
   const e = error as { status?: number, name?: string, message?: string }
   if (e.status === 409)
-    return 'BUSY Bar refused to draw (409). Set the switch on the bar to APPS, or quit the app running on it.'
+    return 'BUSY Bar refused to draw (409). Set the switch on the bar to APPS, and stop the BUSY timer if one runs.'
   if (e.status === 400)
     return `BUSY Bar rejected a request (400): ${e.message ?? 'no detail'}.`
   if (e.status === 403)

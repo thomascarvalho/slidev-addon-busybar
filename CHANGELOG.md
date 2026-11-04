@@ -5,15 +5,29 @@ GitHub release.
 
 ## Unreleased
 
-For firmware 1.3.1 (API 27.14.0). Still on `@busy-app/busy-lib` 0.21.1: 1.0
-is a release candidate and renames every method.
+Firmware 1.3 and busy-lib 1.0. A bar on firmware 1.2 keeps working.
+
+### New
+
+- **The addon takes the bar.** On APPS, firmware 1.3 runs a JS app (Clock
+  by default) that draws at priority 50 and comes back whenever the screen
+  is cleared. The relay quits it before its first draw, and again when a
+  draw is refused because an app was launched meanwhile: one quit, one
+  retry, a line in the console. A bar below API 27.14 is never asked. The
+  bar launches the app again when the switch leaves APPS and returns, so
+  nothing is restored on exit.
+- `superscript` is accepted by `label()`, for custom logos.
 
 ### Changed
 
-- The relay draws at priority 60, above the Clock and Weather apps (50) that
-  firmware 1.3 runs on APPS; the preview script draws at 70.
-- A 409 also suggests quitting the app running on the bar; a 400 shows the
-  bar's own message, which names the refused field since firmware 1.3.
+- `@busy-app/busy-lib` 1.0.0-rc.1 (the `next` tag): every method is now
+  camelCase, errors carry `status` and `body`, and the client negotiates
+  the bar's API version on its first request. Nothing changes in the
+  deck's frontmatter or in `busybar.config.ts`.
+- The relay draws at priority 60, above the apps; the preview script at 70.
+- A 409 now means the switch or a BUSY timer, since apps are quit by the
+  addon; a 400 shows the bar's own message, which names the refused field
+  since firmware 1.3.
 - On macOS, `EHOSTUNREACH` points to the Local Network permission.
 
 ## 0.5.0 — 2026-09-26

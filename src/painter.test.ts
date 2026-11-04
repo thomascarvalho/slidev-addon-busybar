@@ -137,7 +137,8 @@ test('a draw refused for another reason (the BUSY timer, the switch) is thrown a
 
 test('bar errors are described for a trainer', () => {
   assert.match(describeBarError({ status: 409 }), /APPS/)
-  assert.match(describeBarError({ status: 409 }), /quit the app/)
+  assert.match(describeBarError({ status: 409 }), /BUSY timer/)
+  assert.doesNotMatch(describeBarError({ status: 409 }), /quit the app/, 'the addon quits it itself')
   assert.match(describeBarError({ status: 400, message: 'elements[0].display value is invalid' }), /400\): elements\[0\]\.display value is invalid/)
   assert.match(describeBarError({ status: 403 }), /BUSYBAR_PASSWORD/)
   assert.match(describeBarError({ name: 'TimeoutError' }), /not responding/)

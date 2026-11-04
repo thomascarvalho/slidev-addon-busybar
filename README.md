@@ -56,7 +56,10 @@ addons:
 ### Connect the bar
 
 1. **Set the switch on the bar to APPS.** In the other positions the bar
-   refuses to draw anything from outside (a 409 error in the console).
+   refuses to draw anything from outside (a 409 error in the console). On
+   APPS, a bar on firmware 1.3 runs one of its JS apps (Clock by default):
+   the addon quits it when it first draws, and the bar launches it again when
+   the switch leaves APPS and comes back.
 2. **Connect it**, either:
    - over **USB**: nothing to configure, it answers on `10.0.4.20`;
    - over **Wi-Fi**: you need its IP address (shown in the BUSY app) and its
@@ -323,7 +326,7 @@ Colours read best saturated: dark or greyish tones look dull on LEDs.
 
 ### Logos
 
-A logo is a function returning `DisplayDraw` elements for the 72×16 screen,
+A logo is a function returning `displayDraw` elements for the 72×16 screen,
 shown by `busy.screen: <name>`. The package exports small helpers:
 
 ```ts
@@ -343,7 +346,8 @@ export default defineConfig({
   transparent, up to 32 colours
 - `rect(id, x, y, width, height, color)`: a filled rectangle
 - `label(id, text, font, color, x, y)`: text in one of the bar's fonts (`tiny`,
-  `small`, `normal`, `condensed`, `bold`, `large`, `extra_large`, `global`)
+  `small`, `normal`, `condensed`, `bold`, `large`, `extra_large`, `global`,
+  and `superscript` since firmware 1.3)
 - `textWidth(text, font)` and `SCREEN` to lay things out
 
 [`example/busybar.config.ts`](example/busybar.config.ts) has a complete one.
@@ -409,9 +413,9 @@ console warning.
 
 ## Troubleshooting
 
-- **409 in the console**: the switch on the bar is not on APPS, or an app
-  runs on it (since firmware 1.3, Clock and Weather are apps). Quit it on the
-  bar or in its web interface.
+- **409 in the console**: the switch on the bar is not on APPS, or a BUSY
+  timer runs on it. An app running on APPS (Clock, Weather…) is not the
+  cause: the addon quits it itself, and says so in the console.
 - **400 in the console**: the bar names the field it refused; since firmware
   1.3 the message says which element and why.
 - **Unreachable (EHOSTUNREACH) while `curl http://10.0.4.20` works**: macOS
@@ -430,13 +434,23 @@ console warning.
 
 ## What we learnt about the bar
 
-Tested on firmware 1.2.4 (API 27.5.0). None of it is in the official docs:
+Tested on firmware 1.2.4 (API 27.5.0) and 1.3.1 (API 27.14.0). None of it is
+in the official docs:
+
+- Priority, exactly: a draw from another `application_name` needs a
+  priority **strictly** above what holds the screen, and when it wins it
+  removes every element of the previous occupant. A refused draw waits up to
+  1.5 s for the priority to drop before its 409. On APPS, firmware 1.3 runs
+  a JS app (Clock, Weather, yours) that draws at 50 and comes back as soon as
+  the screen is cleared: the addon draws at 60 and quits the app first
+  (`appsQuit`, a 409 when none runs). The bar launches the last app again
+  when the switch leaves APPS and returns.
 
 - Only the `global` font has accented letters; the others show boxes. Its
   capitals are drawn without their accent.
 - The native `countdown` element uses a fixed 5-pixel font, unreadable from
   the back of a room: the addon draws the time itself, once per second.
-- A `DisplayDraw` adds to the application's elements instead of replacing
+- A `displayDraw` adds to the application's elements instead of replacing
   them. An element drawn again under the same `id` is updated, not replaced:
   some fields survive, such as a rectangle's gradient when redrawn solid. The
   relay clears an element first when its type or fill changes.
@@ -462,11 +476,11 @@ Tested on firmware 1.2.4 (API 27.5.0). None of it is in the official docs:
 - The firmware plays every sound file as raw PCM, signed 16-bit
   little-endian, mono, 44 100 Hz, and ignores headers: a 22 050 Hz WAV plays
   twice as fast. The addon converts WAV files and uploads them to its assets
-  (`AssetsUpload`), then plays them with `AudioPlay({ path })`.
+  (`assetsUpload`), then plays them with `audioPlay({ path })`.
 - The back display is 160×80 in 16 greys: colours are converted to
   luminance, and five levels from `#FFFFFF` to `#202020` stay
   distinguishable. Elements take `display: 'back'` and may share a
-  `DisplayDraw` with front ones; `DisplayClear` with `element_ids` removes
+  `displayDraw` with front ones; `displayClear` with `element_ids` removes
   them too. Every font draws there (`extra_large` is 12 px high, capitals
   only), text scrolls, and the `global` font keeps its accents. The firmware
   draws its own status column (Bluetooth, Wi-Fi, battery…) over the
@@ -478,8 +492,10 @@ Tested on firmware 1.2.4 (API 27.5.0). None of it is in the official docs:
 current slide and posts them to the dev server (`POST /__busy/slide`). A Vite
 plugin (`src/plugin.ts`) receives them, ignores duplicates (audience and
 presenter windows send the same slide) and hands them to the relay, which
-draws on the bar with [`@busy-app/busy-lib`](https://github.com/busy-app/busylib-ts):
-one call in flight at a time, only what changed.
+draws on the bar with [`@busy-app/busy-lib`](https://github.com/busy-app/busylib-ts)
+1.0 (a release candidate, on the `next` tag): one call in flight at a time,
+only what changed. The client negotiates the bar's API version on its first
+request, so a bar on firmware 1.2 still works, without the apps.
 
 The browser also derives the day's schedule from the frontmatter and posts
 it to `POST /__busy/schedule`. The relay keeps the day's state (`src/schedule.ts`:
