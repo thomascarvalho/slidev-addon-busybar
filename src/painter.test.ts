@@ -65,7 +65,10 @@ test('forget: the next paint clears everything again; clear: only after somethin
 
 test('bar errors are described for a trainer', () => {
   assert.match(describeBarError({ status: 409 }), /APPS/)
+  assert.match(describeBarError({ status: 409 }), /quit the app/)
+  assert.match(describeBarError({ status: 400, message: 'elements[0].display value is invalid' }), /400\): elements\[0\]\.display value is invalid/)
   assert.match(describeBarError({ status: 403 }), /BUSYBAR_PASSWORD/)
   assert.match(describeBarError({ name: 'TimeoutError' }), /not responding/)
   assert.match(describeBarError(new Error('fetch failed')), /unreachable \(fetch failed\)/)
+  assert.match(describeBarError(new Error('fetch failed', { cause: { code: 'EHOSTUNREACH' } })), /Local Network/)
 })

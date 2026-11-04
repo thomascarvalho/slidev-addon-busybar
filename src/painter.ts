@@ -11,7 +11,10 @@ import type { Scene } from './render.ts'
 import type { Element } from './types.ts'
 import { APPLICATION } from './sounds.ts'
 
-const PRIORITY = 50
+/* Above 50: since firmware 1.3, Clock and Weather are JS apps drawing at 50,
+   and another application needs a strictly higher priority to show over
+   them. The BUSY timer (101) still wins. */
+const PRIORITY = 60
 export const TIMEOUT_MS = 1500
 
 /** What the addon needs from a `BusyBar` client. */

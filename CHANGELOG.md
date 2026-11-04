@@ -3,6 +3,19 @@
 Each `## <version> — <date>` section becomes the notes of that version's
 GitHub release.
 
+## Unreleased
+
+For firmware 1.3.1 (API 27.14.0). Still on `@busy-app/busy-lib` 0.21.1: 1.0
+is a release candidate and renames every method.
+
+### Changed
+
+- The relay draws at priority 60, above the Clock and Weather apps (50) that
+  firmware 1.3 runs on APPS; the preview script draws at 70.
+- A 409 also suggests quitting the app running on the bar; a 400 shows the
+  bar's own message, which names the refused field since firmware 1.3.
+- On macOS, `EHOSTUNREACH` points to the Local Network permission.
+
 ## 0.5.0 — 2026-09-26
 
 The bar's back becomes the trainer's dashboard.

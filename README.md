@@ -409,7 +409,15 @@ console warning.
 
 ## Troubleshooting
 
-- **409 in the console**: the switch on the bar is not on APPS.
+- **409 in the console**: the switch on the bar is not on APPS, or an app
+  runs on it (since firmware 1.3, Clock and Weather are apps). Quit it on the
+  bar or in its web interface.
+- **400 in the console**: the bar names the field it refused; since firmware
+  1.3 the message says which element and why.
+- **Unreachable (EHOSTUNREACH) while `curl http://10.0.4.20` works**: macOS
+  blocks Node from the local network. Allow your terminal in System Settings
+  → Privacy & Security → Local Network. Under tmux, restart the tmux server
+  after allowing it (`tmux kill-server`), or start the deck outside tmux.
 - **403**: `BUSYBAR_PASSWORD` missing or wrong.
 - **Shortcuts do nothing** while the bar follows the slides: the browser
   cached a version of the shortcuts from before the addon was installed. Clear

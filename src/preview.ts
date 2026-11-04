@@ -102,7 +102,7 @@ function png(px: Uint8Array, file: string, W = 72, H = 16, S = 10) {
 
 for (const [name, state] of Object.entries(states)) {
   await bar.DisplayClear({ application_name: APPLICATION })
-  await bar.DisplayDraw({ application_name: APPLICATION, priority: 60, elements: render(state, at(name), config).elements })
+  await bar.DisplayDraw({ application_name: APPLICATION, priority: 70, elements: render(state, at(name), config).elements })
   await new Promise(resolve => setTimeout(resolve, 500))
   const px = await bar.DisplayScreenFrameGet({ display: 0 }, { dataType: 'binary', format: 'rgba' })
   png(px!, path.join(out, `${name}.png`))
@@ -139,7 +139,7 @@ const backs: Record<string, { state: RenderState, at: number }> = {
 }
 for (const [name, { state, at }] of Object.entries(backs)) {
   await bar.DisplayClear({ application_name: APPLICATION })
-  await bar.DisplayDraw({ application_name: APPLICATION, priority: 60, elements: renderBack(state, at, config).elements })
+  await bar.DisplayDraw({ application_name: APPLICATION, priority: 70, elements: renderBack(state, at, config).elements })
   await new Promise(resolve => setTimeout(resolve, 500))
   const px = await bar.DisplayScreenFrameGet({ display: 1 }, { dataType: 'binary', format: 'rgba' })
   png(px!, path.join(out, `${name}.png`), 160, 80, 4)
