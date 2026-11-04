@@ -67,7 +67,7 @@ export function createRelay(bar: Bar, log: Log, options: RelayOptions = {}): Rel
   const { now = Date.now, sounds = stockPlayer } = options
   let config = options.config ?? resolveConfig()
   const state: Omit<RenderState, 'schedule' | 'day'> = { slide: null, timer: null, setting: null }
-  const painter = createPainter(bar, { debug: log.debug })
+  const painter = createPainter(bar, { debug: log.debug, info: log.info })
   const days = createDayTracker({
     now,
     timers: options.timers,

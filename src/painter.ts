@@ -16,9 +16,16 @@ import { APPLICATION } from './sounds.ts'
    them. The BUSY timer (101) still wins. */
 const PRIORITY = 60
 export const TIMEOUT_MS = 1500
+/* The HTTP API that brought `/api/apps`: firmware 1.3. */
+const APPS_API = [27, 14]
 
 /** What the addon needs from a `BusyBar` client. */
 export interface Bar {
+  /** Negotiated with the bar on the first request; empty before. */
+  apiSemver: string
+  systemVersionGet: (options?: RequestOptions) => Promise<{ api_semver: string }>
+  /** Quits the JS app running on the bar; a 409 when none does. */
+  appsQuit: (options?: RequestOptions) => Promise<SuccessResponse>
   displayDraw: (params: DisplayDrawParams, options?: RequestOptions) => Promise<SuccessResponse>
   displayClear: (params?: DisplayClearParams, options?: RequestOptions) => Promise<SuccessResponse>
   audioPlay: (params: AudioPlayParams, options?: RequestOptions) => Promise<SuccessResponse>
@@ -27,6 +34,8 @@ export interface Bar {
 export interface PainterOptions {
   /** Every call to the bar, with `BUSYBAR_DEBUG=true`. */
   debug?: (message: string) => void
+  /** What a trainer wants to know: an app was quit to take the screen. */
+  info?: (message: string) => void
 }
 
 export interface Painter {
@@ -74,19 +83,52 @@ export function createPainter(bar: Bar, options: PainterOptions = {}): Painter {
   async function send(changed: Element[], removed: string[], led?: string) {
     options.debug?.(`${shown ? `clear [${removed}]` : 'clear all'}, draw [${changed.map(e => e.id)}]${led ? `, LED ${led}` : ''}`)
     const request = { timeout: TIMEOUT_MS }
-    if (!shown)
+    if (!shown) {
+      await takeOver(request)
       await bar.displayClear({ application_name: APPLICATION }, request)
-    else if (removed.length)
+    }
+    else if (removed.length) {
       await bar.displayClear({ application_name: APPLICATION, element_ids: removed }, request)
+    }
     touched = true
     if (changed.length) {
-      await bar.displayDraw({
+      const params: DisplayDrawParams = {
         application_name: APPLICATION,
         priority: PRIORITY,
         elements: changed,
         ...(led ? { led_notification_color: led } : {}),
-      }, request)
+      }
+      try {
+        await bar.displayDraw(params, request)
+      }
+      catch (error) {
+        /* An app launched meanwhile took the screen: quit it and try once
+           more. Any other 409 (the BUSY timer, the switch) is the caller's. */
+        if (status(error) !== 409 || !await takeOver(request))
+          throw error
+        await bar.displayDraw(params, request)
+      }
     }
+  }
+
+  /** Takes the bar from the JS app running on it (Clock, Weather…), on a
+      firmware that has apps. `true` when an app was quit. */
+  async function takeOver(request: RequestOptions): Promise<boolean> {
+    const semver = bar.apiSemver || (await bar.systemVersionGet(request)).api_semver
+    if (!atLeast(semver, APPS_API)) {
+      options.debug?.(`API ${semver}: no app to quit before firmware 1.3`)
+      return false
+    }
+    try {
+      await bar.appsQuit(request)
+    }
+    catch (error) {
+      if (status(error) === 409)
+        return false
+      throw error
+    }
+    options.info?.('quit the app running on the bar.')
+    return true
   }
 
   /** Forgets what the bar shows: the next paint clears everything first
@@ -102,6 +144,16 @@ export function createPainter(bar: Bar, options: PainterOptions = {}): Painter {
   }
 
   return { paint, forget, clear }
+}
+
+function status(error: unknown): number | undefined {
+  return (error as { status?: number }).status
+}
+
+/** Whether `semver` ("27.14.0") is at least `major.minor`. */
+function atLeast(semver: string, [major, minor]: number[]): boolean {
+  const [a = 0, b = 0] = semver.split('.').map(Number)
+  return a > major || (a === major && b >= minor)
 }
 
 /** Whether redrawing `after` over `before` would leave some of `before`'s

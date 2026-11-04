@@ -22,6 +22,14 @@ function fakeBar() {
   const played: string[] = []
   const state = { fail: null as null | { status?: number, name?: string, message: string }, sounds: 0 }
   const bar: Bar = {
+    apiSemver: '27.14.0',
+    async systemVersionGet() {
+      return { api_semver: '27.14.0' }
+    },
+    /* No app runs on this bar. */
+    async appsQuit() {
+      throw Object.assign(new Error('Application is not running'), { status: 409 })
+    },
     async displayDraw(params) {
       if (state.fail)
         throw state.fail
