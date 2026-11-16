@@ -3,7 +3,7 @@
 Each `## <version> — <date>` section becomes the notes of that version's
 GitHub release.
 
-## Unreleased
+## 0.6.0 — 2026-11-16
 
 Firmware 1.3 and 1.4, busy-lib 1.0. A bar on firmware 1.2 keeps working.
 
