@@ -13,7 +13,7 @@ export function describeBarError(error: unknown): string {
   if (e.status === 400)
     return `BUSY Bar rejected a request (400): ${e.message ?? 'no detail'}.`
   if (e.status === 403)
-    return 'BUSY Bar denied access (403). Check BUSYBAR_PASSWORD in .env.local.'
+    return 'BUSY Bar denied access (403). Check BUSYBAR_PASSWORD in .env.local: the bar\'s HTTP access code, or one of its access tokens.'
   if (e.name === 'TimeoutError')
     return 'BUSY Bar not responding. The talk goes on without it; retrying every 5 s.'
   const code = (error as { cause?: { code?: string } }).cause?.code

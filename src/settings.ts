@@ -1,7 +1,8 @@
 /* The `.env.local` settings, read once into a typed object (never exposed to
    the browser, since they lack the `VITE_` prefix):
      BUSYBAR_ADDR      address of the bar (default 10.0.4.20, over USB)
-     BUSYBAR_PASSWORD  HTTP access code of the bar, needed over Wi-Fi
+     BUSYBAR_PASSWORD  HTTP access code of the bar, or one of its access
+                       tokens; needed over Wi-Fi
      BUSYBAR_ENABLED   `false` turns the addon off
      BUSYBAR_DEBUG     `true` logs every call to the bar */
 

@@ -63,8 +63,9 @@ addons:
 2. **Connect it**, either:
    - over **USB**: nothing to configure, it answers on `10.0.4.20`;
    - over **Wi-Fi**: you need its IP address (shown in the BUSY app) and its
-     HTTP access code (the bar's "HTTP Access" setting, in key mode). A token
-     from the BUSY cloud will not work here.
+     HTTP access code (the bar's "HTTP Access" setting, in key mode) or one
+     of its access tokens (see below). A token from the BUSY cloud will not
+     work here.
 3. **Create `.env.local`** next to your deck (start from
    [`.env.example`](.env.example)) and **git-ignore it**. It stays on your
    machine and is never sent to the browser. The addon reads it from the folder
@@ -72,15 +73,27 @@ addons:
 
    ```bash
    BUSYBAR_ADDR=192.168.1.42    # default: 10.0.4.20 (USB)
-   BUSYBAR_PASSWORD=123456      # HTTP access code, needed over Wi-Fi
+   BUSYBAR_PASSWORD=123456      # HTTP access code or access token, needed over Wi-Fi
    ```
 
    | Variable | Purpose |
    |---|---|
    | `BUSYBAR_ADDR` | address of the bar; `10.0.4.20` by default |
-   | `BUSYBAR_PASSWORD` | HTTP access code of the bar |
+   | `BUSYBAR_PASSWORD` | HTTP access code of the bar, or one of its access tokens |
    | `BUSYBAR_ENABLED` | `false` turns the addon off |
    | `BUSYBAR_DEBUG` | `true` logs every call to the bar |
+
+   An **access token** replaces the code over Wi-Fi, and can be revoked
+   without changing the code. Create one with the bar plugged in over USB
+   (no code needed there); the bar shows it once:
+
+   ```bash
+   curl -X POST http://10.0.4.20/api/access/tokens \
+     -H 'content-type: application/json' -d '{"name":"slidev"}'
+   # {"short_id":"AAMTBO0f", …, "token":"AAMTBO0f…"}  → BUSYBAR_PASSWORD
+   curl http://10.0.4.20/api/access/tokens                      # list
+   curl -X DELETE http://10.0.4.20/api/access/tokens/AAMTBO0f   # revoke
+   ```
 
 4. Run `slidev`: the console shows `[busybar] relay to …`.
 
@@ -422,7 +435,10 @@ console warning.
   blocks Node from the local network. Allow your terminal in System Settings
   → Privacy & Security → Local Network. Under tmux, restart the tmux server
   after allowing it (`tmux kill-server`), or start the deck outside tmux.
-- **403**: `BUSYBAR_PASSWORD` missing or wrong.
+- **403**: `BUSYBAR_PASSWORD` missing or wrong. `GET /api/access` does not
+  tell: it answers `key_valid: true` whatever you send. Set the code again
+  in the bar's "HTTP Access" setting, or create an access token over USB
+  (see [Connect the bar](#connect-the-bar)).
 - **Shortcuts do nothing** while the bar follows the slides: the browser
   cached a version of the shortcuts from before the addon was installed. Clear
   the site data of `localhost:3030` once (DevTools → Application → Storage →
@@ -434,8 +450,8 @@ console warning.
 
 ## What we learnt about the bar
 
-Tested on firmware 1.2.4 (API 27.5.0) and 1.3.1 (API 27.14.0). None of it is
-in the official docs:
+Tested on firmware 1.2.4 (API 27.5.0), 1.3.1 (API 27.14.0) and 1.4.1 (API
+27.15.0). None of it is in the official docs:
 
 - Priority, exactly: a draw from another `application_name` needs a
   priority **strictly** above what holds the screen, and when it wins it
@@ -471,6 +487,10 @@ in the official docs:
   press and release come separately. A wheel notch is one `sint32` delta of
   ±1. The switch is rotary: moving it reports every position it passes.
   Screen frames come on the same socket, about ten a second.
+- An access token (`POST /api/access/tokens`, 32 characters) is accepted
+  wherever the access code is: the `X-API-Token` header and the stream's
+  `?x-api-token=`. Over USB the bar asks for neither. Checked on firmware
+  1.4.1.
 - That stream sometimes goes silent after a minute or so without closing:
   the addon reconnects after 5 s of silence. busy-lib's `LocalStateStream`
   needs a browser Web Worker, so the addon reads the socket itself.

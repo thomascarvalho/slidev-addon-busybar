@@ -5,7 +5,7 @@ GitHub release.
 
 ## Unreleased
 
-Firmware 1.3 and busy-lib 1.0. A bar on firmware 1.2 keeps working.
+Firmware 1.3 and 1.4, busy-lib 1.0. A bar on firmware 1.2 keeps working.
 
 ### New
 
@@ -29,6 +29,9 @@ Firmware 1.3 and busy-lib 1.0. A bar on firmware 1.2 keeps working.
   addon; a 400 shows the bar's own message, which names the refused field
   since firmware 1.3.
 - On macOS, `EHOSTUNREACH` points to the Local Network permission.
+- Checked on firmware 1.4.1 (API 27.15.0): every screen draws as on 1.3.1.
+  `BUSYBAR_PASSWORD` also takes one of the bar's access tokens; the README
+  shows how to create one, and the 403 message names both.
 
 ## 0.5.0 — 2026-09-26
 
