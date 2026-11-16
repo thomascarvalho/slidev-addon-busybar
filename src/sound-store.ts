@@ -20,9 +20,9 @@ const STOCK_DIRECTORY = '/ext/apps_assets/shared/sounds'
 
 /** What the store needs from a `BusyBar` client. */
 export interface SoundBar {
-  AssetsUpload: (params: AssetsUploadParams, options?: RequestOptions) => Promise<SuccessResponse>
-  AssetsDelete: (params: AssetsDeleteParams, options?: RequestOptions) => Promise<SuccessResponse>
-  StorageListGet: (params: StorageReadDirectoryParams, options?: RequestOptions) => Promise<StorageList>
+  assetsUpload: (params: AssetsUploadParams, options?: RequestOptions) => Promise<SuccessResponse>
+  assetsDelete: (params: AssetsDeleteParams, options?: RequestOptions) => Promise<SuccessResponse>
+  storageListGet: (params: StorageReadDirectoryParams, options?: RequestOptions) => Promise<StorageList>
 }
 
 export interface SoundStoreOptions {
@@ -92,7 +92,7 @@ export function createSoundStore(bar: SoundBar, log: Log, options: SoundStoreOpt
     const asset = `sounds/${createHash('sha1').update(data).digest('hex').slice(0, 12)}.snd`
     if (!uploaded.has(asset)) {
       try {
-        await bar.AssetsUpload({ application_name: APPLICATION, file: asset, data }, { timeout: UPLOAD_TIMEOUT_MS })
+        await bar.assetsUpload({ application_name: APPLICATION, file: asset, data }, { timeout: UPLOAD_TIMEOUT_MS })
       }
       catch (error) {
         /* The bar is away: the next prepare tries again. */
@@ -109,7 +109,7 @@ export function createSoundStore(bar: SoundBar, log: Log, options: SoundStoreOpt
     /** Deletes the addon's previous sounds; queued before any upload. */
     reset() {
       enqueue(async () => {
-        await bar.AssetsDelete({ application_name: APPLICATION }, { timeout: UPLOAD_TIMEOUT_MS }).catch(() => {})
+        await bar.assetsDelete({ application_name: APPLICATION }, { timeout: UPLOAD_TIMEOUT_MS }).catch(() => {})
         uploaded.clear()
         ready.clear()
       })
@@ -147,7 +147,7 @@ export function createSoundStore(bar: SoundBar, log: Log, options: SoundStoreOpt
     async checkStock(sounds: [string, Sound][]) {
       let names: string[]
       try {
-        const { list } = await bar.StorageListGet({ path: STOCK_DIRECTORY }, { timeout: UPLOAD_TIMEOUT_MS })
+        const { list } = await bar.storageListGet({ path: STOCK_DIRECTORY }, { timeout: UPLOAD_TIMEOUT_MS })
         names = list.filter(entry => entry.type === 'file').map(entry => entry.name.replace(/\.snd$/, ''))
       }
       catch {

@@ -79,7 +79,7 @@ export interface BusybarConfig {
   chapterColors?: string[]
   /** `busy.screen` screens, merged with `break`, `questions` and `welcome`. */
   screens?: Record<string, Partial<ScreenStyle>>
-  /** Logos shown by `busy.screen: <name>`. Each returns `DisplayDraw`
+  /** Logos shown by `busy.screen: <name>`. Each returns `displayDraw`
       elements for the 72×16 screen; see `pixels` and `rect`. */
   logos?: Record<string, () => Element[]>
   /** What the bar's wheel, buttons and switch do, merged with the defaults;

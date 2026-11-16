@@ -31,18 +31,18 @@ function fakes(files: Record<string, Uint8Array>) {
   const lines: string[] = []
   const state = { failUpload: false, attempts: 0 }
   const bar: SoundBar = {
-    async AssetsUpload(params) {
+    async assetsUpload(params) {
       state.attempts++
       if (state.failUpload)
         throw new Error('fetch failed')
       calls.push(`upload ${params.file} ${(params.data as Buffer).length}`)
       return { result: 'OK' }
     },
-    async AssetsDelete() {
+    async assetsDelete() {
       calls.push('delete')
       return { result: 'OK' }
     },
-    async StorageListGet() {
+    async storageListGet() {
       return { list: ['calendar_event_starts', 'calendar_reminder_ends', 'volume_change'].map(name => ({ type: 'file', name: `${name}.snd`, size: 1 })) } as never
     },
   }

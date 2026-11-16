@@ -1,4 +1,4 @@
-/* Pure renderer: state → `DisplayDraw` elements for the 72×16 screen. No
+/* Pure renderer: state → `displayDraw` elements for the 72×16 screen. No
    network here, everything is testable without the bar.
 
    Every element has a fixed `id` per slot: the bar replaces an element drawn

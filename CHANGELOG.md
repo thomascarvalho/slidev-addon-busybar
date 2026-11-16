@@ -3,6 +3,36 @@
 Each `## <version> — <date>` section becomes the notes of that version's
 GitHub release.
 
+## Unreleased
+
+Firmware 1.3 and 1.4, busy-lib 1.0. A bar on firmware 1.2 keeps working.
+
+### New
+
+- **The addon takes the bar.** On APPS, firmware 1.3 runs a JS app (Clock
+  by default) that draws at priority 50 and comes back whenever the screen
+  is cleared. The relay quits it before its first draw, and again when a
+  draw is refused because an app was launched meanwhile: one quit, one
+  retry, a line in the console. A bar below API 27.14 is never asked.
+  Nothing is restored on exit: APPS shows the bar's Apps menu until someone
+  picks an app there.
+- `superscript` is accepted by `label()`, for custom logos.
+
+### Changed
+
+- `@busy-app/busy-lib` 1.0.0-rc.1 (the `next` tag): every method is now
+  camelCase, errors carry `status` and `body`, and the client negotiates
+  the bar's API version on its first request. Nothing changes in the
+  deck's frontmatter or in `busybar.config.ts`.
+- The relay draws at priority 60, above the apps; the preview script at 70.
+- A 409 now means the switch or a BUSY timer, since apps are quit by the
+  addon; a 400 shows the bar's own message, which names the refused field
+  since firmware 1.3.
+- On macOS, `EHOSTUNREACH` points to the Local Network permission.
+- Checked on firmware 1.4.1 (API 27.15.0): every screen draws as on 1.3.1.
+  `BUSYBAR_PASSWORD` also takes one of the bar's access tokens; the README
+  shows how to create one, and the 403 message names both.
+
 ## 0.5.0 — 2026-09-26
 
 The bar's back becomes the trainer's dashboard.
